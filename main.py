@@ -31,6 +31,9 @@ from config import (
     SHIFT_SCENARIOS_PATH, HTML_REPORT_PATH, LOG_FILE_PATH,
     DEBUG_MODE, ENABLE_SHIFT_SCENARIOS,
     ENABLE_DICOM_EXPORT, ENABLE_VIEWS,
+    ENABLE_COMPARISON, COMPARE_REPORT_PATH,
+    ENABLE_SHIFT_PLOTS, SHIFT_PLOTS_DIR,
+    ENABLE_DVH_PLOTS, DVH_PLOTS_DIR,
 )
 from dicom_io import (
     scan_patient_folders, find_plan_files, apply_debug_filter, load_plan,
@@ -48,6 +51,9 @@ from shift_scenarios import (
     build_shifted_dose, NOMINAL_SCENARIO, scenario_label,
 )
 from html_report import generate_report
+from comparison import generate_comparison_report
+from plot_shift import generate_shift_plots
+from dvh_plot import generate_dvh_plot
 
 
 # ---------------------------------------------------------------------------
@@ -218,6 +224,18 @@ def phase_c(
                 if vpaths:
                     views_map[(pf.patient_folder, pf.plan_type, orig_name, "nominal")] = vpaths
 
+        # Generate DVH plot for this plan (nominal scenario)
+        if ENABLE_DVH_PLOTS and dose is not None:
+            generate_dvh_plot(
+                patient_folder=pf.patient_folder,
+                plan_type=pf.plan_type,
+                structures=structures,
+                dose=dose,
+                active_rows=plan_active.to_dict("records"),
+                output_dir=DVH_PLOTS_DIR,
+                scenario="nominal",
+            )
+
     return all_results, views_map
 
 
@@ -317,6 +335,18 @@ def phase_d(plan_files_list: list, mapping_df: pd.DataFrame, nominal_results: li
                     if vpaths:
                         views_map[(pf.patient_folder, pf.plan_type, orig_name, sc_lbl)] = vpaths
 
+            # Generate DVH plot for this shift scenario
+            if ENABLE_DVH_PLOTS and shifted_dose is not None:
+                generate_dvh_plot(
+                    patient_folder=pf.patient_folder,
+                    plan_type=pf.plan_type,
+                    structures=structures,
+                    dose=shifted_dose,
+                    active_rows=plan_active.to_dict("records"),
+                    output_dir=DVH_PLOTS_DIR,
+                    scenario=sc_lbl,
+                )
+
     return all_results
 
 
@@ -344,6 +374,47 @@ def phase_e(all_results: list, mapping_df: pd.DataFrame, views_map: dict) -> Non
 # ---------------------------------------------------------------------------
 # Phase F – DICOM export
 # ---------------------------------------------------------------------------
+
+def phase_h() -> None:
+    logger.info("=" * 60)
+    logger.info("PHASE H – Shift-scenario impact plots")
+    logger.info("=" * 60)
+
+    if not ENABLE_SHIFT_PLOTS:
+        logger.info("ENABLE_SHIFT_PLOTS=False – skipping shift plots.")
+        return
+
+    paths = generate_shift_plots(METRICS_CSV_PATH, SHIFT_PLOTS_DIR)
+    if paths:
+        logger.info("  Shift plots written to %s", SHIFT_PLOTS_DIR)
+    else:
+        logger.info("  No shift plots generated (insufficient data or only nominal scenario).")
+
+
+def phase_g(
+    all_results: list,
+    mapping_df: pd.DataFrame,
+    plan_files_list: list,
+    views_map: dict,
+) -> None:
+    logger.info("=" * 60)
+    logger.info("PHASE G – Plan comparison report")
+    logger.info("=" * 60)
+
+    if not ENABLE_COMPARISON:
+        logger.info("ENABLE_COMPARISON=False – skipping comparison report.")
+        return
+
+    from metrics import results_to_dataframe
+    metrics_df = results_to_dataframe(all_results)
+    generate_comparison_report(
+        metrics_df=metrics_df,
+        mapping_df=mapping_df,
+        plan_files_list=plan_files_list,
+        output_path=COMPARE_REPORT_PATH,
+        views_map=views_map,
+    )
+
 
 def phase_f(plan_files_list: list) -> None:
     logger.info("=" * 60)
@@ -411,12 +482,22 @@ def main() -> None:
     # F – DICOM export
     phase_f(plan_files_list)
 
+    # G – Plan comparison report
+    phase_g(all_results, mapping_df, plan_files_list, views_map)
+
+    # H – Shift-scenario impact plots
+    phase_h()
+
     logger.info("Pipeline complete.")
     logger.info("Outputs:")
     logger.info("  Mapping Excel : %s", MAPPING_EXCEL_PATH)
     logger.info("  Metrics CSV   : %s", METRICS_CSV_PATH)
     logger.info("  Shift table   : %s", SHIFT_SCENARIOS_PATH)
     logger.info("  HTML report   : %s", HTML_REPORT_PATH)
+    if ENABLE_COMPARISON:
+        logger.info("  Compare report: %s", COMPARE_REPORT_PATH)
+    if ENABLE_SHIFT_PLOTS:
+        logger.info("  Shift plots   : %s", SHIFT_PLOTS_DIR)
     logger.info("  Log file      : %s", LOG_FILE_PATH)
 
 

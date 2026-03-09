@@ -42,7 +42,7 @@ DEBUG_MODE = True
 DEBUG_MAX_PATIENTS = 15
 
 # In debug mode: only these plan types are processed
-DEBUG_PLAN_TYPES = ["HA"]
+DEBUG_PLAN_TYPES = ["HA", "MM"]
 
 # ---------------------------------------------------------------------------
 # Anonymization settings (for screenshots / public sharing)
@@ -95,8 +95,8 @@ V12GY_THRESHOLD = 12.0
 # Separate margins for CI and GI because:
 #   - CI needs the 100% Rx isodose → typically compact → 15 mm sufficient
 #   - GI needs the 50% Rx isodose → spreads further → 20 mm recommended
-BOUNDARY_MARGIN_CI_MM     = 15.0   # radial expansion (mm) for PIV (100% Rx)
-BOUNDARY_MARGIN_GI_MM     = 20.0   # radial expansion (mm) for V_half_Rx (50% Rx)
+BOUNDARY_MARGIN_CI_MM     = 10.0   # radial expansion (mm) for PIV (100% Rx)
+BOUNDARY_MARGIN_GI_MM     = 15.0   # radial expansion (mm) for V_half_Rx (50% Rx)
 BOUNDARY_EXPAND_STEP_MM   = 1.0    # coarse grid step for the boundary scan
 BOUNDARY_CLOSURE_DELTA_MM = 2.0    # additional expansion for PIV-stability closure check
 PIV_CLOSURE_TOL           = 0.02   # 2 %: PIV (100 % Rx) stable within this → no * on CI
@@ -119,6 +119,30 @@ BRIDGING_CI_THRESHOLD     = 0.80   # check bridging only when CI below this
 BRIDGING_SMALL_MARGIN_MM  = 10.0   # inner radius for PIV bridging test (mm)
 BRIDGING_LARGE_MARGIN_MM  = 11.0   # outer radius = inner + 1 grid step → sharp-edge test
 BRIDGING_PIV_GROWTH_TOL   = 0.15   # 15 % PIV growth at that step triggers bridging flag
+
+# ---------------------------------------------------------------------------
+# Plan comparison report
+# ---------------------------------------------------------------------------
+
+# Set True to generate DVH plots (one PNG per plan showing all PTVs)
+ENABLE_DVH_PLOTS = True
+
+# Output folder for DVH plot PNGs
+DVH_PLOTS_DIR = os.path.join(OUTPUT_DIR, "dvh_plots")
+
+# Set True to generate boxplot+swarmplot figures for shift-scenario impact
+ENABLE_SHIFT_PLOTS = True
+
+# Output folder for shift impact PNGs
+SHIFT_PLOTS_DIR = os.path.join(OUTPUT_DIR, "shift_plots")
+
+# Set True to generate compare_report.html after the main pipeline
+# Requires both HA and MM plans to be present in metrics CSV.
+# DVH results are cached to output/dvh_cache/ to avoid re-computation.
+ENABLE_COMPARISON = True
+
+# Output path for the standalone comparison HTML report
+COMPARE_REPORT_PATH = os.path.join(OUTPUT_DIR, "compare_report.html")
 
 # ---------------------------------------------------------------------------
 # DICOM export settings
@@ -156,3 +180,41 @@ PLAN_TYPE_MM = "MM"
 
 # Prefix filters for patient folders (folders not starting with these are skipped)
 PATIENT_FOLDER_PREFIXES = ["zz_"]
+
+# ---------------------------------------------------------------------------
+# Plan comparison report settings
+# ---------------------------------------------------------------------------
+
+# Set True to generate the HA-vs-MM comparison HTML report (Phase G)
+ENABLE_COMPARISON = True
+
+# Output path for the comparison report
+COMPARE_REPORT_PATH = os.path.join(OUTPUT_DIR, "comparison.html")
+
+# ---------------------------------------------------------------------------
+# Shift-scenario impact plot settings
+# ---------------------------------------------------------------------------
+
+# Set True to generate boxplot/swarmplot figures for shift scenarios (Phase H)
+ENABLE_SHIFT_PLOTS = True
+
+# Output folder for shift impact PNGs
+SHIFT_PLOTS_DIR = os.path.join(OUTPUT_DIR, "shift_plots")
+
+# ---------------------------------------------------------------------------
+# DVH plot settings
+# ---------------------------------------------------------------------------
+
+# Set True to generate cumulative DVH plots per patient/plan (Phase C/D)
+ENABLE_DVH_PLOTS = True
+
+# Output folder for DVH PNGs
+DVH_PLOTS_DIR = os.path.join(OUTPUT_DIR, "dvh_plots")
+
+# ---------------------------------------------------------------------------
+# Output anonymization
+# ---------------------------------------------------------------------------
+
+# Set True to replace patient IDs and structure names with anonymous codes
+# in the Excel mapping output (does not affect internal computation)
+ANONYMIZE_OUTPUT = False

@@ -40,31 +40,101 @@ def _vox(val: float, origin: float, spacing: float, size: int) -> int:
     return int(np.clip(round((val - origin) / spacing), 0, size - 1))
 
 
-def _axial_slice(dose: DoseData, z_mm: float):
-    """Return (dose_2d[Ny,Nx], x_mm_coords, y_mm_coords)."""
-    g = dose.dose_grid
-    iz = _vox(z_mm, dose.origin[2], dose.spacing[2], g.shape[0])
-    x = dose.origin[0] + np.arange(g.shape[2]) * dose.spacing[0]
-    y = dose.origin[1] + np.arange(g.shape[1]) * dose.spacing[1]
-    return g[iz, :, :], x, y
+def _axial_slice(dose: DoseData, z_mm: float) -> tuple:
+    """
+    Extract a 2D axial (XY) slice at z=z_mm from the dose grid.
+    Returns (slice_2d, x_coords_mm, y_coords_mm).
+    """
+    origin = dose.origin
+    spacing = dose.spacing
+    grid = dose.dose_grid
+
+    # Check if this is a rotated ShiftedDose
+    if hasattr(dose, '_has_rotation') and dose._has_rotation:
+        # Rotation present: build slice via point-by-point transform
+        ny, nx = grid.shape[1], grid.shape[2]
+        x_coords = origin[0] + np.arange(nx) * spacing[0]
+        y_coords = origin[1] + np.arange(ny) * spacing[1]
+        slice_2d = np.zeros((ny, nx), dtype=grid.dtype)
+        for iy in range(ny):
+            for ix in range(nx):
+                pt = np.array([x_coords[ix], y_coords[iy], z_mm])
+                pt_orig = dose.transform_point(pt)
+                # Interpolate from base grid
+                from structure_mapping import _interpolate_dose
+                slice_2d[iy, ix] = _interpolate_dose(pt_orig, dose._base)
+        return slice_2d, x_coords, y_coords
+
+    # Pure translation or nominal: direct grid access
+    z_idx = int(round((z_mm - origin[2]) / spacing[2]))
+    z_idx = max(0, min(z_idx, grid.shape[0] - 1))
+    slice_2d = grid[z_idx, :, :]
+    ny, nx = slice_2d.shape
+    x_coords = origin[0] + np.arange(nx) * spacing[0]
+    y_coords = origin[1] + np.arange(ny) * spacing[1]
+    return slice_2d, x_coords, y_coords
 
 
-def _coronal_slice(dose: DoseData, y_mm: float):
-    """Return (dose_2d[Nz,Nx], x_mm_coords, z_mm_coords)."""
-    g = dose.dose_grid
-    iy = _vox(y_mm, dose.origin[1], dose.spacing[1], g.shape[1])
-    x = dose.origin[0] + np.arange(g.shape[2]) * dose.spacing[0]
-    z = dose.origin[2] + np.arange(g.shape[0]) * dose.spacing[2]
-    return g[:, iy, :], x, z
+def _coronal_slice(dose: DoseData, y_mm: float) -> tuple:
+    """
+    Extract a 2D coronal (XZ) slice at y=y_mm.
+    Returns (slice_2d, x_coords_mm, z_coords_mm).
+    """
+    origin = dose.origin
+    spacing = dose.spacing
+    grid = dose.dose_grid
+
+    if hasattr(dose, '_has_rotation') and dose._has_rotation:
+        nz, nx = grid.shape[0], grid.shape[2]
+        x_coords = origin[0] + np.arange(nx) * spacing[0]
+        z_coords = origin[2] + np.arange(nz) * spacing[2]
+        slice_2d = np.zeros((nz, nx), dtype=grid.dtype)
+        for iz in range(nz):
+            for ix in range(nx):
+                pt = np.array([x_coords[ix], y_mm, z_coords[iz]])
+                pt_orig = dose.transform_point(pt)
+                from structure_mapping import _interpolate_dose
+                slice_2d[iz, ix] = _interpolate_dose(pt_orig, dose._base)
+        return slice_2d, x_coords, z_coords
+
+    y_idx = int(round((y_mm - origin[1]) / spacing[1]))
+    y_idx = max(0, min(y_idx, grid.shape[1] - 1))
+    slice_2d = grid[:, y_idx, :]
+    nz, nx = slice_2d.shape
+    x_coords = origin[0] + np.arange(nx) * spacing[0]
+    z_coords = origin[2] + np.arange(nz) * spacing[2]
+    return slice_2d, x_coords, z_coords
 
 
-def _sagittal_slice(dose: DoseData, x_mm: float):
-    """Return (dose_2d[Nz,Ny], y_mm_coords, z_mm_coords)."""
-    g = dose.dose_grid
-    ix = _vox(x_mm, dose.origin[0], dose.spacing[0], g.shape[2])
-    y = dose.origin[1] + np.arange(g.shape[1]) * dose.spacing[1]
-    z = dose.origin[2] + np.arange(g.shape[0]) * dose.spacing[2]
-    return g[:, :, ix], y, z
+def _sagittal_slice(dose: DoseData, x_mm: float) -> tuple:
+    """
+    Extract a 2D sagittal (YZ) slice at x=x_mm.
+    Returns (slice_2d, y_coords_mm, z_coords_mm).
+    """
+    origin = dose.origin
+    spacing = dose.spacing
+    grid = dose.dose_grid
+
+    if hasattr(dose, '_has_rotation') and dose._has_rotation:
+        nz, ny = grid.shape[0], grid.shape[1]
+        y_coords = origin[1] + np.arange(ny) * spacing[1]
+        z_coords = origin[2] + np.arange(nz) * spacing[2]
+        slice_2d = np.zeros((nz, ny), dtype=grid.dtype)
+        for iz in range(nz):
+            for iy in range(ny):
+                pt = np.array([x_mm, y_coords[iy], z_coords[iz]])
+                pt_orig = dose.transform_point(pt)
+                from structure_mapping import _interpolate_dose
+                slice_2d[iz, iy] = _interpolate_dose(pt_orig, dose._base)
+        return slice_2d, y_coords, z_coords
+
+    x_idx = int(round((x_mm - origin[0]) / spacing[0]))
+    x_idx = max(0, min(x_idx, grid.shape[2] - 1))
+    slice_2d = grid[:, :, x_idx]
+    nz, ny = slice_2d.shape
+    y_coords = origin[1] + np.arange(ny) * spacing[1]
+    z_coords = origin[2] + np.arange(nz) * spacing[2]
+    return slice_2d, y_coords, z_coords
 
 
 # ---------------------------------------------------------------------------

@@ -26,30 +26,33 @@ logger = logging.getLogger(__name__)
 MAPPING_COLUMNS = [
     "PatientFolder",
     "PatientID",
-    "PlanType",
+    "PlanType",                # info only; mapping shared across HA/MM
     "PlanLabel",
     "StructureName_Original",
-    "Volume_cc",               # added for ordering; informational
+    "Volume_cc",
     "IsPTV_candidate_auto",
-    "ExcludeFromAnalysis",
-    "ExcludeReason",
-    "Prescription_Gy_detected",
-    "Prescription_Gy_reference",
-    "NewStructureName",
-    "Comment",
+    "ExcludeFromAnalysis",     # EDITABLE: True/False
+    "ExcludeReason",           # EDITABLE: reason text
+    "Prescription_Gy_detected", # READ-ONLY: auto-detected from DVH
+    "Prescription_Gy_reference", # EDITABLE: override Rx here → auto-renames PTV##_##Gy
+    "NewStructureName",        # EDITABLE: custom name (or leave for auto PTV##_##Gy)
+    "Comment",                 # EDITABLE: notes
 ]
 
 # Columns that may only be set manually – never overwritten by the pipeline
 MANUAL_COLUMNS = {
     "ExcludeFromAnalysis",
     "ExcludeReason",
-    "Prescription_Gy_reference",
     "NewStructureName",
     "Comment",
 }
+# Note: Prescription_Gy_reference is AUTO-POPULATED from detected value on first
+# run ("update if empty" rule), so users can edit it directly without knowing the
+# detected value.  NewStructureName auto-names (PTV##_##Gy) are regenerated
+# automatically when this value changes.
 
-# Unique key identifying a row
-KEY_COLS = ["PatientFolder", "PlanType", "StructureName_Original"]
+# Unique key identifying a row (shared across HA/MM plan types)
+KEY_COLS = ["PatientFolder", "StructureName_Original"]
 
 
 # ---------------------------------------------------------------------------
@@ -83,10 +86,9 @@ def load_mapping(path: str = MAPPING_EXCEL_PATH) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 def save_mapping(df: pd.DataFrame, path: str = MAPPING_EXCEL_PATH) -> None:
-    """Save the mapping DataFrame to Excel."""
+    """Save the mapping DataFrame to Excel with column highlighting."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     try:
-        # Apply anonymization if enabled
         if ANONYMIZE_OUTPUT:
             df_out = df.copy()
             if 'PatientFolder' in df_out.columns:
@@ -99,8 +101,34 @@ def save_mapping(df: pd.DataFrame, path: str = MAPPING_EXCEL_PATH) -> None:
                 df_out['NewStructureName'] = df_out['NewStructureName'].apply(lambda x: anonymize_structure_name(x) if x else x)
         else:
             df_out = df
-        
+
         df_out.to_excel(path, index=False)
+
+        # Highlight editable columns with openpyxl
+        try:
+            from openpyxl import load_workbook
+            from openpyxl.styles import PatternFill, Font
+            wb = load_workbook(path)
+            ws = wb.active
+            headers = [cell.value for cell in ws[1]]
+            highlight_cols = {
+                "Prescription_Gy_reference": "FFF2CC",  # yellow – edit to override Rx
+                "ExcludeFromAnalysis":        "FFE0E0",  # light red
+                "NewStructureName":            "E0F0FF",  # light blue
+                "Comment":                     "F0F0F0",  # light gray
+            }
+            for col_name, color in highlight_cols.items():
+                if col_name in headers:
+                    ci = headers.index(col_name) + 1
+                    fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
+                    ws.cell(row=1, column=ci).font = Font(bold=True)
+                    for row in ws.iter_rows(min_row=2, min_col=ci, max_col=ci):
+                        for cell in row:
+                            cell.fill = fill
+            wb.save(path)
+        except Exception as fmt_exc:
+            logger.debug("Excel formatting skipped: %s", fmt_exc)
+
         logger.info("Saved mapping: %d rows → %s", len(df), path)
     except Exception as exc:
         logger.error("Failed to save mapping to %s: %s", path, exc)
@@ -132,7 +160,6 @@ def upsert_mapping(
     def make_key(row):
         return (
             str(row.get("PatientFolder", "") or ""),
-            str(row.get("PlanType", "") or ""),
             str(row.get("StructureName_Original", "") or ""),
         )
 
@@ -157,6 +184,12 @@ def upsert_mapping(
                     if existing_val:
                         counts["manual_preserved"] += 1
                     continue
+                # SPECIAL: Prescription_Gy_reference is editable → preserve if set
+                if col == "Prescription_Gy_reference":
+                    existing_val = str(updated_df.at[idx, col]).strip()
+                    if existing_val:
+                        counts["manual_preserved"] += 1
+                        continue
                 # Overwrite auto columns only if currently empty
                 existing_val = str(updated_df.at[idx, col]).strip()
                 new_val = str(row.get(col, "") or "").strip()
@@ -228,8 +261,8 @@ def build_mapping_rows(
             "IsPTV_candidate_auto":    "True",
             "ExcludeFromAnalysis":     "",   # manual column – left empty
             "ExcludeReason":           "",   # manual
-            "Prescription_Gy_detected": str(int(rx_detected)) if rx_detected else "",
-            "Prescription_Gy_reference": "",  # manual
+            "Prescription_Gy_detected":  str(int(rx_detected)) if rx_detected else "",
+            "Prescription_Gy_reference":  str(int(rx_detected)) if rx_detected else "",  # pre-populated; user may override
             "NewStructureName":        "",   # assigned later after merge
             "Comment":                 "",   # manual
         })
@@ -270,33 +303,61 @@ def _estimate_volume_cc(structure, dose) -> Optional[float]:
 # Post-merge: assign NewStructureName per plan
 # ---------------------------------------------------------------------------
 
+def _is_auto_name(name: str) -> bool:
+    """Return True if name looks like an auto-generated PTV##_##Gy label."""
+    import re
+    return bool(re.fullmatch(r'PTV\d+_\d+Gy', str(name).strip()))
+
+
+def _rx_in_auto_name(name: str):
+    """Extract dose from auto-name PTV##_##Gy; return int or None."""
+    import re
+    m = re.fullmatch(r'PTV\d+_(\d+)Gy', str(name).strip())
+    return int(m.group(1)) if m else None
+
+
 def assign_new_names_inplace(df: pd.DataFrame) -> pd.DataFrame:
     """
-    For each (PatientFolder, PlanType) group, assign NewStructureName
+    For each PatientFolder group (shared across HA/MM), assign NewStructureName
     to rows where it is currently empty and not excluded.
-    Rows that already have a manually assigned name are skipped.
+
+    Auto-generated names (pattern PTV##_##Gy) are cleared and regenerated
+    when the embedded dose no longer matches Prescription_Gy_reference,
+    so users only need to edit that column – no need to also update the name.
+    Manually customised names (not matching the auto-pattern) are always kept.
     """
     from structure_mapping import build_new_structure_names
 
-    groups = df.groupby(["PatientFolder", "PlanType"])
-    for (folder, ptype), group_idx in groups.groups.items():
+    groups = df.groupby(["PatientFolder"])
+    for folder, group_idx in groups.groups.items():
+        # Step 1 – clear all auto-generated names so Step 2 can renumber
+        # them from scratch (handles Rx changes, exclusion changes, etc.).
+        # Manually customised names (not matching PTV##_##Gy) are never touched.
+        for i in group_idx:
+            cur_name = str(df.at[i, "NewStructureName"]).strip()
+            if _is_auto_name(cur_name):
+                df.at[i, "NewStructureName"] = ""
+
+        # Step 2 – regenerate ALL auto-names for this patient (to ensure consistent numbering)
         rows_list = df.loc[group_idx].to_dict("records")
-        # Only assign names where currently empty and candidate
-        needs_name = [
+        
+        # Collect all active PTV rows (including those with stale names cleared above)
+        active_rows = [
             r for r in rows_list
             if str(r.get("IsPTV_candidate_auto", "")).lower() == "true"
-            and not str(r.get("NewStructureName", "")).strip()
             and not _is_excluded(r)
         ]
-        if not needs_name:
+        
+        if not active_rows:
             continue
+        
+        # Regenerate names for all active PTVs (ensures counter starts at 1 per patient)
+        build_new_structure_names(active_rows)
 
-        build_new_structure_names(needs_name)
-
-        # Write back names
+        # Apply regenerated names back to dataframe
         name_map = {
             r["StructureName_Original"]: r["NewStructureName"]
-            for r in needs_name
+            for r in active_rows
         }
         for i in group_idx:
             orig = df.at[i, "StructureName_Original"]

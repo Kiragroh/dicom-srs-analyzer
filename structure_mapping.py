@@ -218,26 +218,28 @@ def _interpolate_dose(point, dose) -> Optional[float]:
 def build_new_structure_names(rows: list) -> list:
     """
     Assign NewStructureName values to a list of mapping-table row dicts
-    (for a single patient + plan) in a reproducible order.
+    (for a single patient) in a reproducible order.
 
     Modifies rows in-place and returns them.
 
     Rows that are excluded or have no dose reference are left with an
     empty NewStructureName or a placeholder.
+    
+    NOTE: Counter starts at 1 for each patient (not global).
     """
     active_rows = [r for r in rows if not _is_excluded(r)]
     active_rows.sort(key=_sort_key)
 
-    counter = 1
+    counter = 1  # Restart at 1 per patient
     for row in active_rows:
         rx = _get_rx(row)
         if rx is not None:
             row["NewStructureName"] = f"PTV{counter:02d}_{int(rx)}Gy"
+            counter += 1  # only advance when a name is actually assigned
         else:
             row["NewStructureName"] = ""
             if not row.get("Comment"):
                 row["Comment"] = "TODO: prescription Gy could not be determined"
-        counter += 1
 
     return rows
 
