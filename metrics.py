@@ -40,7 +40,7 @@ from config import (
     GRID_CONVERGENCE_TOL, V12GY_THRESHOLD,
     BOUNDARY_MARGIN_CI_MM, BOUNDARY_MARGIN_GI_MM,
     BOUNDARY_EXPAND_STEP_MM,
-    BOUNDARY_CLOSURE_DELTA_MM, PIV_CLOSURE_TOL,
+    BOUNDARY_CLOSURE_DELTA_MM, PIV_CLOSURE_TOL, VHALF_CLOSURE_TOL,
     BRIDGING_CI_THRESHOLD, BRIDGING_SMALL_MARGIN_MM,
     BRIDGING_LARGE_MARGIN_MM, BRIDGING_PIV_GROWTH_TOL,
 )
@@ -399,7 +399,7 @@ def calculate_all_metrics(
     )
     vhalf_a = gi_metrics["_V_half_Rx"]
     vhalf_b = gi_check["_V_half_Rx"]
-    gi_unc  = (abs(vhalf_b - vhalf_a) / vhalf_a > PIV_CLOSURE_TOL) if vhalf_a > 0 else False
+    gi_unc  = (abs(vhalf_b - vhalf_a) / vhalf_a > VHALF_CLOSURE_TOL) if vhalf_a > 0 else False
 
     logger.debug(
         "    %s: PIV %.4f\u2192%.4f (%.1f%%) Vhalf %.4f\u2192%.4f (%.1f%%) \u2192 ci_unc=%s gi_unc=%s",

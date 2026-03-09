@@ -371,6 +371,7 @@ def _section_overview(df: pd.DataFrame) -> str:
         display_patient = anonymize_patient_id(r['PatientFolder']) if ANONYMIZE_OUTPUT else r['PatientFolder']
         display_struct = anonymize_structure_name(r.get('NewStructureName','') or r.get('StructureName_Original','')) if ANONYMIZE_OUTPUT else (r.get('NewStructureName','') or r.get('StructureName_Original',''))
         
+        bridge_span = '<span class="bridging-badge">bridge</span>' if br_u else ''
         rows_html.append(
             f'<tr data-patient="{pat}" data-plan="{plan}" '
             f'data-struct="{orig}" data-scenario="nominal">'
@@ -379,9 +380,7 @@ def _section_overview(df: pd.DataFrame) -> str:
             f"<td>{display_struct}</td>"
             f"<td>{_fmt(r.get('TV_cc'),3)}</td>"
             f"<td>{_fmt(r.get('DistToIso_mm'),1)}</td>"
-            f"<td style='{_cell_colour('Coverage_pct', _safe_float(r.get('Coverage_pct')))}'>{_fmt(r.get('Coverage_pct'),1)}</td>")
-        bridge_span = '<span class=\'bridging-badge\'>bridge</span>' if br_u else ''
-        rows_html.append(
+            f"<td style='{_cell_colour('Coverage_pct', _safe_float(r.get('Coverage_pct')))}'>{_fmt(r.get('Coverage_pct'),1)}</td>"
             f"<td style='{_cell_colour('PaddickCI', _safe_float(r.get('PaddickCI')))}'>{_fmu(r.get('PaddickCI'),3,ci_u)}{bridge_span}</td>"
             f"<td style='{_cell_colour('RTOG_CI',   _safe_float(r.get('RTOG_CI')))}'>{_fmu(r.get('RTOG_CI'),3,ci_u)}</td>"
             f"<td style='{_cell_colour('HI',         _safe_float(r.get('HI')))}'>{_fmt(r.get('HI'),3)}</td>"
@@ -444,15 +443,14 @@ def _subsection_plan(plan_type: str, plan_df: pd.DataFrame, patient: str) -> str
             ci_u = bool(r.get('CI_uncertain', False))
             gi_u = bool(r.get('GI_uncertain', False))
             br_u = bool(r.get('Bridging_suspected', False))
+            bridge_span2 = '<span class="bridging-badge">bridge</span>' if br_u else ''
             rows_html.append(
                 f'<tr class="{row_cls}" data-patient="{pat_da}" data-plan="{plan_da}" '
                 f'data-struct="{orig_da}" data-scenario="{sc_da}">'
                 f"<td>{sc}</td>"
                 f"<td>{_fmt(r.get('TV_cc'),3)}</td>"
                 f"<td>{_fmt(r.get('DistToIso_mm'),1)}</td>"
-                f"<td style='{_cell_colour('Coverage_pct', _safe_float(r.get('Coverage_pct')))}'>{_fmt(r.get('Coverage_pct'),1)}</td>")
-            bridge_span2 = '<span class=\'bridging-badge\'>bridge</span>' if br_u else ''
-            rows_html.append(
+                f"<td style='{_cell_colour('Coverage_pct', _safe_float(r.get('Coverage_pct')))}'>{_fmt(r.get('Coverage_pct'),1)}</td>"
                 f"<td style='{_cell_colour('PaddickCI', _safe_float(r.get('PaddickCI')))}'>{_fmu(r.get('PaddickCI'),3,ci_u)}{bridge_span2}</td>"
                 f"<td style='{_cell_colour('RTOG_CI', _safe_float(r.get('RTOG_CI')))}'>{_fmu(r.get('RTOG_CI'),3,ci_u)}</td>"
                 f"<td style='{_cell_colour('HI', _safe_float(r.get('HI')))}'>{_fmt(r.get('HI'),3)}</td>"

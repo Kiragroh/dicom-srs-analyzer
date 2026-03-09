@@ -39,7 +39,7 @@ LOG_FILE_PATH = os.path.join(OUTPUT_DIR, "pipeline.log")
 DEBUG_MODE = True
 
 # In debug mode: number of patients to process
-DEBUG_MAX_PATIENTS = 1
+DEBUG_MAX_PATIENTS = 15
 
 # In debug mode: only these plan types are processed
 DEBUG_PLAN_TYPES = ["HA"]
@@ -99,7 +99,8 @@ BOUNDARY_MARGIN_CI_MM     = 15.0   # radial expansion (mm) for PIV (100% Rx)
 BOUNDARY_MARGIN_GI_MM     = 20.0   # radial expansion (mm) for V_half_Rx (50% Rx)
 BOUNDARY_EXPAND_STEP_MM   = 1.0    # coarse grid step for the boundary scan
 BOUNDARY_CLOSURE_DELTA_MM = 2.0    # additional expansion for PIV-stability closure check
-PIV_CLOSURE_TOL           = 0.02   # 2 %: PIV stable within this → isodose is closed → no *
+PIV_CLOSURE_TOL           = 0.02   # 2 %: PIV (100 % Rx) stable within this → no * on CI
+VHALF_CLOSURE_TOL         = 0.05   # 5 %: V_half_Rx (50 % Rx) stable within this → no * on GI
 
 # Backward compat alias used in slice_views.py for the bounding-box visualisation
 BOUNDARY_FIXED_MARGIN_MM  = BOUNDARY_MARGIN_CI_MM
@@ -115,9 +116,9 @@ SHOW_COMPUTATION_BOUNDARY = True
 # to BRIDGING_LARGE_MM.  A growth > BRIDGING_PIV_GROWTH_TOL indicates that
 # the 100 % Rx isodose of a neighbouring structure is being captured (bridging).
 BRIDGING_CI_THRESHOLD     = 0.80   # check bridging only when CI below this
-BRIDGING_SMALL_MARGIN_MM  = 5.0    # inner radius for PIV bridging test (mm)
-BRIDGING_LARGE_MARGIN_MM  = 10.0   # outer radius for PIV bridging test (mm)
-BRIDGING_PIV_GROWTH_TOL   = 0.15   # 15 % PIV growth triggers bridging flag
+BRIDGING_SMALL_MARGIN_MM  = 10.0   # inner radius for PIV bridging test (mm)
+BRIDGING_LARGE_MARGIN_MM  = 11.0   # outer radius = inner + 1 grid step → sharp-edge test
+BRIDGING_PIV_GROWTH_TOL   = 0.15   # 15 % PIV growth at that step triggers bridging flag
 
 # ---------------------------------------------------------------------------
 # DICOM export settings
