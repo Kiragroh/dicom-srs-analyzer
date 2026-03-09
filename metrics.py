@@ -513,16 +513,24 @@ def _resolve_rx(row) -> Optional[float]:
 def results_to_dataframe(results: List[MetricResult]):
     """Convert a list of MetricResult to a pandas DataFrame."""
     import pandas as pd
+    from config import ANONYMIZE_OUTPUT
+    from anonymization import anonymize_patient_id, anonymize_structure_name
 
     records = []
     for r in results:
+        # Apply anonymization if enabled
+        patient_folder = anonymize_patient_id(r.patient_folder) if ANONYMIZE_OUTPUT else r.patient_folder
+        patient_id = anonymize_patient_id(r.patient_id) if ANONYMIZE_OUTPUT else r.patient_id
+        struct_name = anonymize_structure_name(r.structure_name) if ANONYMIZE_OUTPUT else r.structure_name
+        new_struct_name = anonymize_structure_name(r.new_structure_name) if ANONYMIZE_OUTPUT and r.new_structure_name else r.new_structure_name
+        
         records.append({
-            "PatientFolder":       r.patient_folder,
-            "PatientID":           r.patient_id,
+            "PatientFolder":       patient_folder,
+            "PatientID":           patient_id,
             "PlanType":            r.plan_type,
             "PlanLabel":           r.plan_label,
-            "StructureName_Original": r.structure_name,
-            "NewStructureName":    r.new_structure_name,
+            "StructureName_Original": struct_name,
+            "NewStructureName":    new_struct_name,
             "Scenario":            r.scenario,
             "Rx_Gy":               r.rx_dose,
             "TV_cc":               r.TV,

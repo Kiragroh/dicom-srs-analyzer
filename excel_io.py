@@ -13,8 +13,9 @@ from typing import List, Optional, Dict
 import numpy as np
 import pandas as pd
 
-from config import MAPPING_EXCEL_PATH
+from config import MAPPING_EXCEL_PATH, ANONYMIZE_OUTPUT
 from structure_mapping import _is_excluded
+from anonymization import anonymize_patient_id, anonymize_structure_name
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +86,21 @@ def save_mapping(df: pd.DataFrame, path: str = MAPPING_EXCEL_PATH) -> None:
     """Save the mapping DataFrame to Excel."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     try:
-        df.to_excel(path, index=False)
+        # Apply anonymization if enabled
+        if ANONYMIZE_OUTPUT:
+            df_out = df.copy()
+            if 'PatientFolder' in df_out.columns:
+                df_out['PatientFolder'] = df_out['PatientFolder'].apply(anonymize_patient_id)
+            if 'PatientID' in df_out.columns:
+                df_out['PatientID'] = df_out['PatientID'].apply(anonymize_patient_id)
+            if 'StructureName_Original' in df_out.columns:
+                df_out['StructureName_Original'] = df_out['StructureName_Original'].apply(anonymize_structure_name)
+            if 'NewStructureName' in df_out.columns:
+                df_out['NewStructureName'] = df_out['NewStructureName'].apply(lambda x: anonymize_structure_name(x) if x else x)
+        else:
+            df_out = df
+        
+        df_out.to_excel(path, index=False)
         logger.info("Saved mapping: %d rows → %s", len(df), path)
     except Exception as exc:
         logger.error("Failed to save mapping to %s: %s", path, exc)

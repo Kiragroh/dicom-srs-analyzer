@@ -39,10 +39,19 @@ LOG_FILE_PATH = os.path.join(OUTPUT_DIR, "pipeline.log")
 DEBUG_MODE = True
 
 # In debug mode: number of patients to process
-DEBUG_MAX_PATIENTS = 1
+DEBUG_MAX_PATIENTS = 2
 
 # In debug mode: only these plan types are processed
 DEBUG_PLAN_TYPES = ["HA"]
+
+# ---------------------------------------------------------------------------
+# Anonymization settings (for screenshots / public sharing)
+# ---------------------------------------------------------------------------
+
+# Set True to anonymize patient IDs and structure names in all outputs
+# Patient IDs become: Patient_001, Patient_002, ...
+# Structure names become: PTV_A, PTV_B, ... (alphabetically)
+ANONYMIZE_OUTPUT = True
 
 # ---------------------------------------------------------------------------
 # PTV detection mode

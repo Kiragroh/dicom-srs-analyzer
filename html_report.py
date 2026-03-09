@@ -17,7 +17,8 @@ from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
-from config import HTML_REPORT_PATH, OUTPUT_DIR
+from config import HTML_REPORT_PATH, OUTPUT_DIR, ANONYMIZE_OUTPUT
+from anonymization import anonymize_patient_id, anonymize_structure_name
 
 logger = logging.getLogger(__name__)
 
@@ -358,12 +359,17 @@ def _section_overview(df: pd.DataFrame) -> str:
         orig  = _da(str(r.get('StructureName_Original', '')))
         ci_u  = bool(r.get('CI_uncertain', False))
         gi_u  = bool(r.get('GI_uncertain', False))
+        
+        # Apply anonymization if enabled
+        display_patient = anonymize_patient_id(r['PatientFolder']) if ANONYMIZE_OUTPUT else r['PatientFolder']
+        display_struct = anonymize_structure_name(r.get('NewStructureName','') or r.get('StructureName_Original','')) if ANONYMIZE_OUTPUT else (r.get('NewStructureName','') or r.get('StructureName_Original',''))
+        
         rows_html.append(
             f'<tr data-patient="{pat}" data-plan="{plan}" '
             f'data-struct="{orig}" data-scenario="nominal">'
-            f"<td>{r['PatientFolder']}</td>"
+            f"<td>{display_patient}</td>"
             f"<td><span class='{badge_cls}'>{r['PlanType']}</span></td>"
-            f"<td>{r.get('NewStructureName','') or r.get('StructureName_Original','')}</td>"
+            f"<td>{display_struct}</td>"
             f"<td>{_fmt(r.get('TV_cc'),3)}</td>"
             f"<td>{_fmt(r.get('DistToIso_mm'),1)}</td>"
             f"<td style='{_cell_colour('Coverage_pct', _safe_float(r.get('Coverage_pct')))}'>{_fmt(r.get('Coverage_pct'),1)}</td>"
@@ -417,7 +423,11 @@ def _subsection_plan(plan_type: str, plan_df: pd.DataFrame, patient: str) -> str
         rows_html = []
         pat_da   = _da(patient)
         plan_da  = _da(plan_type)
-        struct_da = _da(struct)
+        orig_da  = _da(struct)
+        
+        # Get display name for structure (anonymized if enabled)
+        display_struct = anonymize_structure_name(struct) if ANONYMIZE_OUTPUT else struct
+        
         for _, r in struct_df.iterrows():
             sc = str(r.get("Scenario", "nominal"))
             row_cls = "scenario-nominal" if sc == "nominal" else "scenario-shift"
@@ -426,7 +436,7 @@ def _subsection_plan(plan_type: str, plan_df: pd.DataFrame, patient: str) -> str
             gi_u = bool(r.get('GI_uncertain', False))
             rows_html.append(
                 f'<tr class="{row_cls}" data-patient="{pat_da}" data-plan="{plan_da}" '
-                f'data-struct="{struct_da}" data-scenario="{sc_da}">'
+                f'data-struct="{orig_da}" data-scenario="{sc_da}">'
                 f"<td>{sc}</td>"
                 f"<td>{_fmt(r.get('TV_cc'),3)}</td>"
                 f"<td>{_fmt(r.get('DistToIso_mm'),1)}</td>"
@@ -444,7 +454,7 @@ def _subsection_plan(plan_type: str, plan_df: pd.DataFrame, patient: str) -> str
                 f"</tr>"
             )
         new_name = struct_df["NewStructureName"].iloc[0] if not struct_df.empty else ""
-        label = f"{new_name} ({struct})" if new_name else struct
+        label = f"{new_name} ({display_struct})" if new_name else display_struct
         n_ci_u = struct_df.get("CI_uncertain", pd.Series([False]*len(struct_df), index=struct_df.index)).astype(bool).sum()
         n_gi_u = struct_df.get("GI_uncertain", pd.Series([False]*len(struct_df), index=struct_df.index)).astype(bool).sum()
         unc_hint = ""
@@ -487,9 +497,9 @@ def _section_excluded(excluded_df: pd.DataFrame) -> str:
     for _, r in excluded_df.iterrows():
         rows_html.append(
             f"<tr class='excluded-row'>"
-            f"<td>{r.get('PatientFolder','')}</td>"
+            f"<td>{anonymize_patient_id(r.get('PatientFolder','')) if ANONYMIZE_OUTPUT else r.get('PatientFolder','')}</td>"
             f"<td>{r.get('PlanType','')}</td>"
-            f"<td>{r.get('StructureName_Original','')}</td>"
+            f"<td>{anonymize_structure_name(r.get('StructureName_Original','')) if ANONYMIZE_OUTPUT else r.get('StructureName_Original','')}"
             f"<td>{r.get('ExcludeReason','')}</td>"
             f"<td>{r.get('Comment','')}</td>"
             f"</tr>"
