@@ -38,8 +38,11 @@ import numpy as np
 from config import (
     GRID_STEP_SIZES, LARGE_TARGET_DIAMETER_MM,
     GRID_CONVERGENCE_TOL, V12GY_THRESHOLD,
-    BOUNDARY_FIXED_MARGIN_MM, BOUNDARY_EXPAND_STEP_MM,
+    BOUNDARY_MARGIN_CI_MM, BOUNDARY_MARGIN_GI_MM,
+    BOUNDARY_EXPAND_STEP_MM,
     BOUNDARY_CLOSURE_DELTA_MM, PIV_CLOSURE_TOL,
+    BRIDGING_CI_THRESHOLD, BRIDGING_SMALL_MARGIN_MM,
+    BRIDGING_LARGE_MARGIN_MM, BRIDGING_PIV_GROWTH_TOL,
 )
 from dicom_io import Structure, DoseData
 from structure_mapping import _point_in_structure_xy, _interpolate_dose, compute_centroid
@@ -79,6 +82,7 @@ class MetricResult:
     DistToIso_mm:     float = float("nan")
     ci_uncertain:     bool  = False   # True when 100%-Rx isodose hits sampling boundary
     gi_uncertain:     bool  = False   # True when 50%-Rx isodose hits sampling boundary
+    bridging_suspected: bool = False  # True when PIV grows with small radius increase (adjacent dose)
 
     error_message:    str = ""
 
@@ -93,10 +97,11 @@ def _calculate_metrics_for_step(
     rx_dose: float,
     step: float,
     extra_margin: float = 0.0,
+    radial_mask: bool = False,
     progress_cb=None,
 ) -> dict:
     """
-    Monte-Carlo grid sampling – mirrors _calculateMetricsForStep in the HTML.
+    Monte-Carlo grid sampling.
 
     Points are on a regular grid with spacing *step* (mm).
     PIV and V12Gy use ALL grid points (regardless of structure membership).
@@ -106,6 +111,11 @@ def _calculate_metrics_for_step(
     are added above and below the contour stack with *step* spacing so that
     PIV / V_half_Rx outside the PTV z-range are also captured.
 
+    *radial_mask* – when True, only points within *extra_margin* mm from the
+    SURFACE of the original (0-margin) bounding box are included in the
+    expansion zone.  This prevents corners of the rectangular box from
+    picking up dose from neighbouring structures.
+
     Returns a dict of raw metric values.
     """
     if not structure.contours:
@@ -113,8 +123,10 @@ def _calculate_metrics_for_step(
 
     # Bounding box of structure (+ optional expansion)
     all_pts = np.vstack(structure.contours)
-    min_xyz = all_pts.min(axis=0) - extra_margin
-    max_xyz = all_pts.max(axis=0) + extra_margin
+    struct_min = all_pts.min(axis=0)   # original bbox (before expansion)
+    struct_max = all_pts.max(axis=0)
+    min_xyz = struct_min - extra_margin
+    max_xyz = struct_max + extra_margin
 
     xs = np.arange(min_xyz[0], max_xyz[0] + step * 0.5, step)
     ys = np.arange(min_xyz[1], max_xyz[1] + step * 0.5, step)
@@ -124,6 +136,20 @@ def _calculate_metrics_for_step(
     # _point_in_structure_xy finds the nearest contour (within 5 mm) for the 2-D
     # membership test, so intermediate z-planes are handled correctly.
     zs = np.arange(min_xyz[2], max_xyz[2] + step * 0.5, step)
+
+    # Pre-compute radial mask: spherical dilation of original bbox.
+    # Points in the expansion zone are only included if their Euclidean
+    # distance to the nearest face/edge/corner of the struct bbox ≤ extra_margin.
+    # This prevents rectangular corners from capturing neighbouring structure dose.
+    if radial_mask and extra_margin > 0:
+        X3, Y3, Z3 = np.meshgrid(xs, ys, zs, indexing='ij')
+        dx = np.maximum(struct_min[0] - X3, np.maximum(0.0, X3 - struct_max[0]))
+        dy = np.maximum(struct_min[1] - Y3, np.maximum(0.0, Y3 - struct_max[1]))
+        dz = np.maximum(struct_min[2] - Z3, np.maximum(0.0, Z3 - struct_max[2]))
+        _valid = (dx * dx + dy * dy + dz * dz) <= (extra_margin + 0.5 * step) ** 2
+        del X3, Y3, Z3, dx, dy, dz
+    else:
+        _valid = None
 
     sample_vol = (step ** 3) / 1000.0  # mm³ → cc
 
@@ -145,6 +171,11 @@ def _calculate_metrics_for_step(
         for iy, y in enumerate(ys):
             is_y_bnd = (iy == 0 or iy == iy_last)
             for ix, x in enumerate(xs):
+                # Radial mask: skip points outside spherical dilation of original bbox
+                if _valid is not None and not _valid[ix, iy, iz]:
+                    done += 1
+                    continue
+
                 dose_val = _interpolate_dose((x, y, z), dose)
                 if dose_val is None:
                     done += 1
@@ -240,6 +271,7 @@ def _empty_metrics(step: float) -> dict:
     d["finalGrid"] = step
     d["ci_uncertain"] = False
     d["gi_uncertain"] = False
+    d["bridging_suspected"] = False
     d["_boundary_max_dose"] = 0.0
     d["_V_half_Rx"] = 0.0
     return d
@@ -276,6 +308,7 @@ def _merge_metrics(fine: dict, expanded: dict) -> dict:
     result["GI"]        = new_GI
     result["ci_uncertain"] = expanded["ci_uncertain"]
     result["gi_uncertain"] = expanded["gi_uncertain"]
+    result["bridging_suspected"] = expanded.get("bridging_suspected", False)
     return result
 
 
@@ -330,39 +363,92 @@ def calculate_all_metrics(
             prev_vol = cur_vol
             fine_metrics = m
 
-    # --- Pass 2: coarse 1 mm grid at +15 mm margin (volume metrics) ---
-    vol_metrics = _calculate_metrics_for_step(
+    # --- Pass 2a: CI expansion – radial 15 mm, 1 mm grid → PIV (100 % Rx) ---
+    ci_metrics = _calculate_metrics_for_step(
         structure, dose, rx_dose,
         step=BOUNDARY_EXPAND_STEP_MM,
-        extra_margin=BOUNDARY_FIXED_MARGIN_MM,
+        extra_margin=BOUNDARY_MARGIN_CI_MM,
+        radial_mask=True,
     )
 
-    # --- Pass 3: closure check (PIV stability at +15 mm vs +(15+2) mm) ---
-    # If PIV grows when the box is enlarged by BOUNDARY_CLOSURE_DELTA_MM the
-    # isodose is NOT fully enclosed → flag as uncertain.  Small floating-point
-    # differences inside the already-enclosed region are acceptable (PIV_CLOSURE_TOL).
-    check_metrics = _calculate_metrics_for_step(
+    # --- Pass 2b: CI closure check (15 mm → 17 mm radial) ---
+    ci_check = _calculate_metrics_for_step(
         structure, dose, rx_dose,
         step=BOUNDARY_EXPAND_STEP_MM,
-        extra_margin=BOUNDARY_FIXED_MARGIN_MM + BOUNDARY_CLOSURE_DELTA_MM,
+        extra_margin=BOUNDARY_MARGIN_CI_MM + BOUNDARY_CLOSURE_DELTA_MM,
+        radial_mask=True,
     )
-    piv_a    = vol_metrics["PIV"]
-    piv_b    = check_metrics["PIV"]
-    vhalf_a  = vol_metrics["_V_half_Rx"]
-    vhalf_b  = check_metrics["_V_half_Rx"]
-
+    piv_a  = ci_metrics["PIV"]
+    piv_b  = ci_check["PIV"]
     ci_unc = (abs(piv_b - piv_a) / piv_a > PIV_CLOSURE_TOL) if piv_a > 0 else False
-    gi_unc = (abs(vhalf_b - vhalf_a) / vhalf_a > PIV_CLOSURE_TOL) if vhalf_a > 0 else False
 
-    vol_metrics["ci_uncertain"] = ci_unc
-    vol_metrics["gi_uncertain"] = gi_unc
+    # --- Pass 3a: GI expansion – radial 20 mm, 1 mm grid → V_half_Rx (50 % Rx) ---
+    gi_metrics = _calculate_metrics_for_step(
+        structure, dose, rx_dose,
+        step=BOUNDARY_EXPAND_STEP_MM,
+        extra_margin=BOUNDARY_MARGIN_GI_MM,
+        radial_mask=True,
+    )
+
+    # --- Pass 3b: GI closure check (20 mm → 22 mm radial) ---
+    gi_check = _calculate_metrics_for_step(
+        structure, dose, rx_dose,
+        step=BOUNDARY_EXPAND_STEP_MM,
+        extra_margin=BOUNDARY_MARGIN_GI_MM + BOUNDARY_CLOSURE_DELTA_MM,
+        radial_mask=True,
+    )
+    vhalf_a = gi_metrics["_V_half_Rx"]
+    vhalf_b = gi_check["_V_half_Rx"]
+    gi_unc  = (abs(vhalf_b - vhalf_a) / vhalf_a > PIV_CLOSURE_TOL) if vhalf_a > 0 else False
+
     logger.debug(
-        "    %s: PIV %.4f→%.4f (%.1f%%) Vhalf %.4f→%.4f (%.1f%%) → ci_unc=%s gi_unc=%s",
+        "    %s: PIV %.4f\u2192%.4f (%.1f%%) Vhalf %.4f\u2192%.4f (%.1f%%) \u2192 ci_unc=%s gi_unc=%s",
         structure.name,
-        piv_a, piv_b, 100*(piv_b-piv_a)/max(piv_a,1e-9),
-        vhalf_a, vhalf_b, 100*(vhalf_b-vhalf_a)/max(vhalf_a,1e-9),
+        piv_a, piv_b, 100 * (piv_b - piv_a) / max(piv_a, 1e-9),
+        vhalf_a, vhalf_b, 100 * (vhalf_b - vhalf_a) / max(vhalf_a, 1e-9),
         ci_unc, gi_unc,
     )
+
+    # --- Pass 4: Bridging detection ---
+    # Build a merged result using CI-margin PIV so we can compute a preliminary CI
+    tv = fine_metrics.get("TV", 0.0) or 0.0
+    tv_coverage = fine_metrics.get("coverage", 0.0) or 0.0
+    tv_at_rx = tv_coverage * tv
+    rough_ci = (tv_at_rx ** 2) / (tv * piv_a) if (tv > 0 and piv_a > 0) else 1.0
+
+    bridging_suspected = False
+    if rough_ci < BRIDGING_CI_THRESHOLD and piv_a > 0:
+        m_small = _calculate_metrics_for_step(
+            structure, dose, rx_dose,
+            step=BOUNDARY_EXPAND_STEP_MM,
+            extra_margin=BRIDGING_SMALL_MARGIN_MM,
+            radial_mask=True,
+        )
+        m_large = _calculate_metrics_for_step(
+            structure, dose, rx_dose,
+            step=BOUNDARY_EXPAND_STEP_MM,
+            extra_margin=BRIDGING_LARGE_MARGIN_MM,
+            radial_mask=True,
+        )
+        piv_small = m_small["PIV"]
+        piv_large = m_large["PIV"]
+        if piv_small > 0 and (piv_large - piv_small) / piv_small > BRIDGING_PIV_GROWTH_TOL:
+            bridging_suspected = True
+            logger.info(
+                "    %s: BRIDGING suspected – PIV %.4f (r=%gmm) → %.4f (r=%gmm) = +%.0f%%",
+                structure.name, piv_small, BRIDGING_SMALL_MARGIN_MM,
+                piv_large, BRIDGING_LARGE_MARGIN_MM,
+                100 * (piv_large - piv_small) / piv_small,
+            )
+
+    # --- Merge: use CI-margin PIV for CI metrics, GI-margin V_half_Rx for GI ---
+    # Build a combined vol_metrics dict: PIV from CI pass, V_half_Rx from GI pass
+    vol_metrics = dict(ci_metrics)                           # base from CI pass
+    vol_metrics["_V_half_Rx"] = gi_metrics["_V_half_Rx"]    # replace with GI pass value
+    vol_metrics["V12Gy"] = max(ci_metrics["V12Gy"], gi_metrics["V12Gy"])  # take larger
+    vol_metrics["ci_uncertain"] = ci_unc
+    vol_metrics["gi_uncertain"] = gi_unc
+    vol_metrics["bridging_suspected"] = bridging_suspected
 
     return _merge_metrics(fine_metrics, vol_metrics)
 
@@ -464,6 +550,7 @@ def compute_metrics_for_plan(
                 DistToIso_mm=dist_iso,
                 ci_uncertain=bool(m.get("ci_uncertain", False)),
                 gi_uncertain=bool(m.get("gi_uncertain", False)),
+                bridging_suspected=bool(m.get("bridging_suspected", False)),
                 **{k: m[k] for k in [
                     "TV", "coverage", "paddickCI", "rtogCI", "HI", "GI",
                     "Dmax", "PIV", "V12Gy", "D2", "D98", "D50",
@@ -550,6 +637,7 @@ def results_to_dataframe(results: List[MetricResult]):
             "DistToIso_mm":        r.DistToIso_mm,
             "CI_uncertain":        r.ci_uncertain,
             "GI_uncertain":        r.gi_uncertain,
+            "Bridging_suspected":  r.bridging_suspected,
             "Error":               r.error_message,
         })
     return pd.DataFrame(records)

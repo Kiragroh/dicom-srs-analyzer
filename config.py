@@ -87,19 +87,37 @@ V12GY_THRESHOLD = 12.0
 # ---------------------------------------------------------------------------
 # Boundary-expansion settings for CI/GI uncertainty resolution
 # ---------------------------------------------------------------------------
-# The structure bounding box is always expanded by a fixed margin for the
-# volume metrics (PIV, V_half_Rx, V12Gy).  A coarse 1 mm grid is used for
-# this scan; structural metrics (TV, Dmax, D2/D50/D98) keep the fine-grid
-# values from the 0-margin run.
-# ci_uncertain / gi_uncertain are set if the relevant isodose still touches
-# the boundary of this expanded box.
-BOUNDARY_FIXED_MARGIN_MM  = 10.0   # fixed expansion (mm) around structure bbox
+# The structure bounding box is expanded for volume metrics (PIV, V_half_Rx).
+# A coarse 1 mm grid is used; structural metrics keep the fine-grid values.
+# Expansion is RADIAL (spherical dilation of bbox) to avoid capturing
+# dose from adjacent structures at the corners of a rectangular expansion.
+#
+# Separate margins for CI and GI because:
+#   - CI needs the 100% Rx isodose → typically compact → 15 mm sufficient
+#   - GI needs the 50% Rx isodose → spreads further → 20 mm recommended
+BOUNDARY_MARGIN_CI_MM     = 15.0   # radial expansion (mm) for PIV (100% Rx)
+BOUNDARY_MARGIN_GI_MM     = 20.0   # radial expansion (mm) for V_half_Rx (50% Rx)
 BOUNDARY_EXPAND_STEP_MM   = 1.0    # coarse grid step for the boundary scan
 BOUNDARY_CLOSURE_DELTA_MM = 2.0    # additional expansion for PIV-stability closure check
 PIV_CLOSURE_TOL           = 0.02   # 2 %: PIV stable within this → isodose is closed → no *
 
-# Show the +BOUNDARY_FIXED_MARGIN_MM computation box outline in slice views
+# Backward compat alias used in slice_views.py for the bounding-box visualisation
+BOUNDARY_FIXED_MARGIN_MM  = BOUNDARY_MARGIN_CI_MM
+
+# Show the +BOUNDARY_MARGIN_CI_MM computation box outline in slice views
 SHOW_COMPUTATION_BOUNDARY = True
+
+# ---------------------------------------------------------------------------
+# Dose-bridging detection settings
+# ---------------------------------------------------------------------------
+# For structures with Paddick CI < BRIDGING_CI_THRESHOLD, the pipeline checks
+# whether PIV grows when the sampling radius is enlarged from BRIDGING_SMALL_MM
+# to BRIDGING_LARGE_MM.  A growth > BRIDGING_PIV_GROWTH_TOL indicates that
+# the 100 % Rx isodose of a neighbouring structure is being captured (bridging).
+BRIDGING_CI_THRESHOLD     = 0.80   # check bridging only when CI below this
+BRIDGING_SMALL_MARGIN_MM  = 5.0    # inner radius for PIV bridging test (mm)
+BRIDGING_LARGE_MARGIN_MM  = 10.0   # outer radius for PIV bridging test (mm)
+BRIDGING_PIV_GROWTH_TOL   = 0.15   # 15 % PIV growth triggers bridging flag
 
 # ---------------------------------------------------------------------------
 # DICOM export settings

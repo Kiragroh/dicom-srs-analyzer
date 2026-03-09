@@ -188,6 +188,8 @@ def _build_html(
   .mean-row td {{ background:#1e3050 !important; color:#aaccff; font-style:italic; }}
   .mean-row td:first-child {{ color:#88aadd; font-weight:bold; }}
   .uncertain-badge {{ color:#ffaa44; font-size:10px; font-weight:bold; margin-left:6px; }}
+  .bridging-badge {{ color:#ff6688; font-size:10px; font-weight:bold; margin-left:6px;
+                     background:#3a1a22; border:1px solid #ff6688; border-radius:3px; padding:1px 4px; }}
   #view-panel {{
     display:none; position:fixed; top:0; right:0;
     width:300px; height:100vh; background:#1a1a2e;
@@ -223,9 +225,13 @@ Click any table row to view orthogonal dose images</p>
     <h4>LEGEND</h4>
     <div class="legend-item">
       <span class="legend-star">*</span>
-      <span><strong>Uncertain metric</strong> &ndash; the pipeline automatically adjusted the sampling box in all directions to better contain the relevant isodose and reduce the risk of dose bridging across the boundary. The reported value represents the best estimate obtained under these optimized conditions.<br>
+      <span><strong>Uncertain metric</strong> &ndash; the relevant isodose was not fully enclosed within the sampling region. Reported value may be underestimated.<br>
       <em>Paddick CI / RTOG CI</em>: 100&nbsp;%&nbsp;Rx isodose not fully contained &rarr; PIV may be underestimated.<br>
       <em>GI</em>: 50&nbsp;%&nbsp;Rx isodose not fully contained &rarr; V&frac12;Rx may be underestimated.</span>
+    </div>
+    <div class="legend-item" style="margin-top:8px">
+      <span class="bridging-badge" style="font-size:11px">bridge</span>
+      <span><strong>Dose bridging suspected</strong> &ndash; Paddick CI &lt;&nbsp;0.8 and PIV grows by &gt;&nbsp;15&nbsp;% when the sampling radius increases from 5&nbsp;mm to 10&nbsp;mm. A neighbouring high-dose region is likely being captured &rarr; PIV / CI may be artificially inflated.</span>
     </div>
   </div>
   <div>
@@ -359,6 +365,7 @@ def _section_overview(df: pd.DataFrame) -> str:
         orig  = _da(str(r.get('StructureName_Original', '')))
         ci_u  = bool(r.get('CI_uncertain', False))
         gi_u  = bool(r.get('GI_uncertain', False))
+        br_u  = bool(r.get('Bridging_suspected', False))
         
         # Apply anonymization if enabled
         display_patient = anonymize_patient_id(r['PatientFolder']) if ANONYMIZE_OUTPUT else r['PatientFolder']
@@ -372,8 +379,10 @@ def _section_overview(df: pd.DataFrame) -> str:
             f"<td>{display_struct}</td>"
             f"<td>{_fmt(r.get('TV_cc'),3)}</td>"
             f"<td>{_fmt(r.get('DistToIso_mm'),1)}</td>"
-            f"<td style='{_cell_colour('Coverage_pct', _safe_float(r.get('Coverage_pct')))}'>{_fmt(r.get('Coverage_pct'),1)}</td>"
-            f"<td style='{_cell_colour('PaddickCI', _safe_float(r.get('PaddickCI')))}'>{_fmu(r.get('PaddickCI'),3,ci_u)}</td>"
+            f"<td style='{_cell_colour('Coverage_pct', _safe_float(r.get('Coverage_pct')))}'>{_fmt(r.get('Coverage_pct'),1)}</td>")
+        bridge_span = '<span class=\'bridging-badge\'>bridge</span>' if br_u else ''
+        rows_html.append(
+            f"<td style='{_cell_colour('PaddickCI', _safe_float(r.get('PaddickCI')))}'>{_fmu(r.get('PaddickCI'),3,ci_u)}{bridge_span}</td>"
             f"<td style='{_cell_colour('RTOG_CI',   _safe_float(r.get('RTOG_CI')))}'>{_fmu(r.get('RTOG_CI'),3,ci_u)}</td>"
             f"<td style='{_cell_colour('HI',         _safe_float(r.get('HI')))}'>{_fmt(r.get('HI'),3)}</td>"
             f"<td style='{_cell_colour('GI',         _safe_float(r.get('GI')))}'>{_fmu(r.get('GI'),2,gi_u)}</td>"
@@ -434,14 +443,17 @@ def _subsection_plan(plan_type: str, plan_df: pd.DataFrame, patient: str) -> str
             sc_da   = _da(sc)
             ci_u = bool(r.get('CI_uncertain', False))
             gi_u = bool(r.get('GI_uncertain', False))
+            br_u = bool(r.get('Bridging_suspected', False))
             rows_html.append(
                 f'<tr class="{row_cls}" data-patient="{pat_da}" data-plan="{plan_da}" '
                 f'data-struct="{orig_da}" data-scenario="{sc_da}">'
                 f"<td>{sc}</td>"
                 f"<td>{_fmt(r.get('TV_cc'),3)}</td>"
                 f"<td>{_fmt(r.get('DistToIso_mm'),1)}</td>"
-                f"<td style='{_cell_colour('Coverage_pct', _safe_float(r.get('Coverage_pct')))}'>{_fmt(r.get('Coverage_pct'),1)}</td>"
-                f"<td style='{_cell_colour('PaddickCI', _safe_float(r.get('PaddickCI')))}'>{_fmu(r.get('PaddickCI'),3,ci_u)}</td>"
+                f"<td style='{_cell_colour('Coverage_pct', _safe_float(r.get('Coverage_pct')))}'>{_fmt(r.get('Coverage_pct'),1)}</td>")
+            bridge_span2 = '<span class=\'bridging-badge\'>bridge</span>' if br_u else ''
+            rows_html.append(
+                f"<td style='{_cell_colour('PaddickCI', _safe_float(r.get('PaddickCI')))}'>{_fmu(r.get('PaddickCI'),3,ci_u)}{bridge_span2}</td>"
                 f"<td style='{_cell_colour('RTOG_CI', _safe_float(r.get('RTOG_CI')))}'>{_fmu(r.get('RTOG_CI'),3,ci_u)}</td>"
                 f"<td style='{_cell_colour('HI', _safe_float(r.get('HI')))}'>{_fmt(r.get('HI'),3)}</td>"
                 f"<td style='{_cell_colour('GI', _safe_float(r.get('GI')))}'>{_fmu(r.get('GI'),2,gi_u)}</td>"
@@ -457,9 +469,11 @@ def _subsection_plan(plan_type: str, plan_df: pd.DataFrame, patient: str) -> str
         label = f"{new_name} ({display_struct})" if new_name else display_struct
         n_ci_u = struct_df.get("CI_uncertain", pd.Series([False]*len(struct_df), index=struct_df.index)).astype(bool).sum()
         n_gi_u = struct_df.get("GI_uncertain", pd.Series([False]*len(struct_df), index=struct_df.index)).astype(bool).sum()
+        n_br   = struct_df.get("Bridging_suspected", pd.Series([False]*len(struct_df), index=struct_df.index)).astype(bool).sum()
         unc_hint = ""
         if n_ci_u: unc_hint += f' <span class="uncertain-badge">* CI ({n_ci_u}x)</span>'
         if n_gi_u: unc_hint += f' <span class="uncertain-badge">* GI ({n_gi_u}x)</span>'
+        if n_br:   unc_hint += f' <span class="bridging-badge">bridge ({n_br}x)</span>'
 
         structure_sections.append(f"""
 <details>
