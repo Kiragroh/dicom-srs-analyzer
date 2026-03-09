@@ -222,9 +222,7 @@ Metrics per SRS_Metrics_v1.0.0RC1.html &nbsp;|&nbsp; Click any table row to view
     <h4>LEGEND</h4>
     <div class="legend-item">
       <span class="legend-star">*</span>
-      <span><strong>Uncertain metric</strong> &ndash; the pipeline attempted to expand the sampling box
-      (up to +60&nbsp;mm in all directions) to fully contain the relevant isodose, but it still
-      reached the box boundary. The value shown is the best estimate with the largest feasible box.<br>
+      <span><strong>Uncertain metric</strong> &ndash; the pipeline automatically adjusted the sampling box in all directions to better contain the relevant isodose and reduce the risk of dose bridging across the boundary. The reported value represents the best estimate obtained under these optimized conditions.<br>
       <em>Paddick CI / RTOG CI</em>: 100&nbsp;%&nbsp;Rx isodose not fully contained &rarr; PIV may be underestimated.<br>
       <em>GI</em>: 50&nbsp;%&nbsp;Rx isodose not fully contained &rarr; V&frac12;Rx may be underestimated.</span>
     </div>

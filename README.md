@@ -35,28 +35,74 @@ output/                  – Created automatically on first run
 
 ## Prerequisites
 
-```
-pip install pydicom numpy pandas openpyxl
+**Python 3.8+** required.
+
+Install dependencies:
+
+```bash
+pip install pydicom numpy pandas openpyxl matplotlib
 ```
 
 ## Quick Start
 
-1. Open `config.py` and verify `DATA_ROOT` points to the correct parent folder
-   (default: one level above the `srs_analysis/` directory).
-2. Set `DEBUG_MODE = True` for a quick test run (2 patients, HA plans only).
-3. Run:
+### 1. Prepare Your DICOM Data
 
-```powershell
-cd "c:\Users\maxgr\Desktop\HAvsMM_2021\Eclips-Export_MM3+HA (original+CT)\srs_analysis"
+Organize your DICOM files in the following structure:
+
+```
+data/
+├── Patient_001/
+│   ├── RS.*.dcm          # Structure Set
+│   ├── RD.*.Plan1.dcm    # Dose file for Plan1
+│   ├── RP.*.Plan1.dcm    # Plan file for Plan1
+│   ├── RD.*.Plan2.dcm    # (optional) Dose file for Plan2
+│   └── RP.*.Plan2.dcm    # (optional) Plan file for Plan2
+├── Patient_002/
+│   └── ...
+```
+
+**Important**: 
+- Each patient folder must contain **one RS file** and **at least one RD+RP pair**.
+- Plan type is detected from the **last dot-separated token** before `.dcm` in the filename.
+  - Example: `RD.something.MyPlan.dcm` → plan type = `MyPlan`
+  - Example: `RD.data.HA.dcm` → plan type = `HA`
+
+### 2. Configure the Pipeline
+
+Open `config.py` and adjust:
+
+```python
+# Point to your DICOM data folder
+DATA_ROOT = r"C:\path\to\your\data"  # or use relative path: "../data"
+
+# For initial testing, use debug mode
+DEBUG_MODE = True
+DEBUG_MAX_PATIENTS = 2
+
+# IMPORTANT: Adjust plan type detection to match YOUR filenames
+# If your files are named like "RD.*.MyPlan.dcm", set:
+DEBUG_PLAN_TYPES = ["MyPlan"]  # or ["Plan1", "Plan2"] for multiple
+
+# If you don't have specific plan type suffixes, comment out this line:
+# DEBUG_PLAN_TYPES = None  # processes all plans found
+```
+
+### 3. Run the Pipeline
+
+```bash
+cd srs_analysis
 python main.py
 ```
 
-4. Open `output/ptv_mapping.xlsx` and review / fill the manual columns:
-   - `ExcludeFromAnalysis`  – set to `True` / `1` / `X` to exclude a structure
-   - `ExcludeReason`        – optional text
-   - `Prescription_Gy_reference` – override the auto-detected prescription
-   - `NewStructureName`     – override the auto-generated name
-5. Re-run `main.py` to recalculate with your manual edits preserved.
+### 4. Review and Refine
+
+Open `output/ptv_mapping.xlsx` and review/edit:
+- `ExcludeFromAnalysis` – set to `True`/`1`/`X` to exclude a structure
+- `ExcludeReason` – optional text
+- `Prescription_Gy_reference` – override auto-detected prescription
+- `NewStructureName` – override auto-generated name
+
+Re-run `python main.py` to recalculate with your edits preserved.
 
 ## Configuration Reference (`config.py`)
 
@@ -64,7 +110,8 @@ python main.py
 |---|---|---|
 | `DEBUG_MODE` | `True` | Restricts to 2 patients for testing |
 | `DEBUG_MAX_PATIENTS` | `2` | Patients processed in debug mode |
-| `DEBUG_PLAN_TYPES` | `["Plan1"]` | Plan types to process in debug mode |
+| `DEBUG_PLAN_TYPES` | `["Plan1"]` | Plan types to process (must match filename suffix before `.dcm`). Set to `None` to process all plans. |
+| `DATA_ROOT` | `"../data"` | Path to folder containing patient subfolders with DICOM files |
 | `PTV_DETECTION_MODE` | `"name_startswith_ptv"` | How PTV candidates are identified |
 | `ENABLE_SHIFT_SCENARIOS` | `False` | Enable 6D shift robustness analysis |
 | `ENABLE_DICOM_EXPORT` | `True` | Export shifted RD+RP with new UIDs |
