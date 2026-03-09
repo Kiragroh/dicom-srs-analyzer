@@ -4,6 +4,11 @@ Automated evaluation of stereotactic radiosurgery (SRS) DICOM datasets for multi
 
 ![SRS Analysis Pipeline Banner](docs/banner.png)
 
+## Screenshot
+
+![HTML Report](docs/screenshot.png)
+
+Interactive HTML report with color-coded metrics, patient/plan sections, and clickable rows for orthogonal slice views.
 ## Project Structure
 
 ```
@@ -187,12 +192,6 @@ The pipeline uses a **PIV-stability closure check** to flag uncertain CI/GI valu
    Adjust `V12GY_THRESHOLD` in `config.py` if needed.
 
 4. **Validation** – Metrics have been validated against reference implementations and clinical data.
-
-## Screenshot
-
-![HTML Report](docs/screenshot.png)
-
-Interactive HTML report with color-coded metrics, patient/plan sections, and clickable rows for orthogonal slice views.
 
 ## Acknowledgments
 
