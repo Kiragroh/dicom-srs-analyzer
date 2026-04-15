@@ -820,17 +820,20 @@ with PdfPages(output_supp_pdf) as pdf:
     plt.close(fig_table1)
     print(f"Supplementary page 2 (metrics table) added to PDF")
 
-    # Page 3: Statistics table (with shortened column names) - LANDSCAPE
-    fig_table2, ax_table2 = plt.subplots(figsize=(16, 10))  # Wider for landscape
+    # Page 3: Statistics table (with shortened column names) - Match plot page width
+    fig_table2, ax_table2 = plt.subplots(figsize=(15, 10))  # Portrait, wide like plot page
     ax_table2.axis('tight')
     ax_table2.axis('off')
-    ax_table2.set_title('Supplementary Table 2: Percentage Difference Statistics by Setup', fontsize=14, fontweight='bold', pad=20)
+    ax_table2.set_title('Supplementary Table 2: Percentage Difference Statistics\n(Mean / Std / Median per Metric)', fontsize=13, fontweight='bold', pad=15)
 
-    # Shorten column names for display
+    # Shorten column names for display - more aggressive shortening
     stats_short_names = {'Setup': 'Setup'}
     for col in supp_stats_df.columns:
         if col != 'Setup':
-            stats_short_names[col] = col.replace('_Mean', '_M').replace('_Std', '_S').replace('_Median', '_Med')
+            # Shorten metric names: CI_Mean -> CI_M, etc.
+            short = col.replace('_Mean', '_M').replace('_Std', '_S').replace('_Median', '_Md')
+            short = short.replace('RTOG_CI', 'RTOG').replace('Dmax%', 'Dmax')
+            stats_short_names[col] = short
 
     stats_col_labels = [stats_short_names.get(c, c) for c in supp_stats_df.columns]
 
@@ -839,18 +842,18 @@ with PdfPages(output_supp_pdf) as pdf:
         colLabels=stats_col_labels,
         cellLoc='center',
         loc='center',
-        bbox=[0.02, 0.05, 0.96, 0.88]  # Adjusted bbox for better fit
+        bbox=[0.03, 0.08, 0.94, 0.82]  # Tight bbox
     )
     table2.auto_set_font_size(False)
-    table2.set_fontsize(7)  # Smaller font for more columns
-    table2.scale(1, 2)
+    table2.set_fontsize(8)
+    table2.scale(1, 1.2)  # Smaller row height (was 2)
 
     # Style header row
     for i in range(len(stats_col_labels)):
         table2[(0, i)].set_facecolor('#4472C4')
-        table2[(0, i)].set_text_props(weight='bold', color='white')
+        table2[(0, i)].set_text_props(weight='bold', color='white', size=8)
 
-    pdf.savefig(fig_table2, dpi=300, bbox_inches='tight', orientation='landscape')
+    pdf.savefig(fig_table2, dpi=300, bbox_inches='tight')
     plt.close(fig_table2)
     print(f"Supplementary page 3 (statistics table) added to PDF")
 
