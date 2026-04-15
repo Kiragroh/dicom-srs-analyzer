@@ -839,13 +839,13 @@ with PdfPages(output_supp_pdf) as pdf:
         bbox=[0.01, 0.08, 0.98, 0.84]
     )
     table1.auto_set_font_size(False)
-    table1.set_fontsize(7)
+    table1.set_fontsize(6)
     table1.scale(1, 0.9)  # Lower row height
 
-    # Style header row - smaller font for three-line headers
+    # Style header row - match content font size
     for i in range(len(col_labels)):
         table1[(0, i)].set_facecolor('#4472C4')
-        table1[(0, i)].set_text_props(weight='bold', color='white', size=5)
+        table1[(0, i)].set_text_props(weight='bold', color='white', size=6)
 
     pdf.savefig(fig_table1, dpi=300, bbox_inches='tight', orientation='landscape')
     plt.close(fig_table1)
@@ -881,13 +881,13 @@ with PdfPages(output_supp_pdf) as pdf:
         bbox=[0.01, 0.08, 0.98, 0.84]
     )
     table2.auto_set_font_size(False)
-    table2.set_fontsize(7)
+    table2.set_fontsize(6)
     table2.scale(1, 0.9)  # Lower row height
 
-    # Style header row - smaller font for three-line headers
+    # Style header row - match content font size
     for i in range(len(stats_col_labels)):
         table2[(0, i)].set_facecolor('#4472C4')
-        table2[(0, i)].set_text_props(weight='bold', color='white', size=5)
+        table2[(0, i)].set_text_props(weight='bold', color='white', size=6)
 
     pdf.savefig(fig_table2, dpi=300, bbox_inches='tight', orientation='landscape')
     plt.close(fig_table2)
