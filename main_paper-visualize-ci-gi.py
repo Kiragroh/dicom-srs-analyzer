@@ -748,10 +748,78 @@ output_supp_fig = os.path.join(config.OUTPUT_DIR, 'supplementary_all_metrics_sub
 fig_supp.savefig(output_supp_fig, dpi=600, bbox_inches='tight')
 print(f"\nSupplementary figure saved to '{output_supp_fig}'")
 
-# Also save as PDF for publication
-output_supp_pdf = os.path.join(config.OUTPUT_DIR, 'supplementary_all_metrics_subplots.pdf')
-fig_supp.savefig(output_supp_pdf, dpi=300, bbox_inches='tight', format='pdf')
-print(f"Supplementary figure (PDF) saved to '{output_supp_pdf}'")
+# Create multi-page PDF with figure and tables
+from matplotlib.backends.backend_pdf import PdfPages
+
+output_supp_pdf = os.path.join(config.OUTPUT_DIR, 'supplementary_all_metrics.pdf')
+with PdfPages(output_supp_pdf) as pdf:
+    # Page 1: The figure
+    fig_supp.suptitle('Supplementary Figure: Percentage Difference in All Metrics vs Reference (HA_1)', fontsize=14, fontweight='bold', y=1.02)
+    pdf.savefig(fig_supp, dpi=300, bbox_inches='tight')
+    print(f"\nSupplementary page 1 (figure) added to PDF")
+
+    # Page 2: Comprehensive metrics table
+    fig_table1, ax_table1 = plt.subplots(figsize=(11, 8))
+    ax_table1.axis('tight')
+    ax_table1.axis('off')
+    ax_table1.set_title('Supplementary Table 1: Comprehensive Metrics by Setup', fontsize=12, fontweight='bold', pad=20)
+
+    # Prepare table data (select key columns for display)
+    display_cols = ['Setup', 'N']
+    for metric in ['PaddickCI', 'RTOG_CI', 'GI', 'HI', 'Coverage_pct', 'D50_Gy', 'D98_Gy', 'Dmax_Gy']:
+        display_cols.extend([f'{metric}_Mean', f'{metric}_Std'])
+
+    # Filter to available columns
+    display_cols = [c for c in display_cols if c in supp_all_df.columns]
+    table_data = supp_all_df[display_cols].round(3)
+
+    table1 = ax_table1.table(
+        cellText=table_data.values,
+        colLabels=table_data.columns,
+        cellLoc='center',
+        loc='center',
+        bbox=[0, 0, 1, 1]
+    )
+    table1.auto_set_font_size(False)
+    table1.set_fontsize(7)
+    table1.scale(1, 1.5)
+
+    # Style header row
+    for i in range(len(table_data.columns)):
+        table1[(0, i)].set_facecolor('#4472C4')
+        table1[(0, i)].set_text_props(weight='bold', color='white')
+
+    pdf.savefig(fig_table1, dpi=300, bbox_inches='tight')
+    plt.close(fig_table1)
+    print(f"Supplementary page 2 (metrics table) added to PDF")
+
+    # Page 3: Statistics table
+    fig_table2, ax_table2 = plt.subplots(figsize=(11, 8))
+    ax_table2.axis('tight')
+    ax_table2.axis('off')
+    ax_table2.set_title('Supplementary Table 2: Percentage Difference Statistics by Setup', fontsize=12, fontweight='bold', pad=20)
+
+    table2 = ax_table2.table(
+        cellText=supp_stats_df.round(2).values,
+        colLabels=supp_stats_df.columns,
+        cellLoc='center',
+        loc='center',
+        bbox=[0, 0, 1, 1]
+    )
+    table2.auto_set_font_size(False)
+    table2.set_fontsize(8)
+    table2.scale(1, 1.8)
+
+    # Style header row
+    for i in range(len(supp_stats_df.columns)):
+        table2[(0, i)].set_facecolor('#4472C4')
+        table2[(0, i)].set_text_props(weight='bold', color='white')
+
+    pdf.savefig(fig_table2, dpi=300, bbox_inches='tight')
+    plt.close(fig_table2)
+    print(f"Supplementary page 3 (statistics table) added to PDF")
+
+print(f"\nComplete supplementary PDF saved to '{output_supp_pdf}' (3 pages)")
 
 # Supplementary statistics table
 print("\n=== Supplementary Statistics by Metric ===")
