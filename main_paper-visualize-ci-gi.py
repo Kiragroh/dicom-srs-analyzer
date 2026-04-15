@@ -480,7 +480,7 @@ print(f"Paddick CI vs Setup Error Magnitude: r = {ci_corr[0]:.4f}, p = {ci_corr[
 print(f"Gradient Index vs Setup Error Magnitude: r = {gi_corr[0]:.4f}, p = {gi_corr[1]:.4e}")
 
 # Statistical Tests: Compare each setup to HA_1 (reference)
-print("\n=== Statistical Tests: Each Setup vs Reference (1) ===")
+print("\n=== Statistical Tests: Each Setup vs Reference ===")
 
 ha1_data = df[df['Tx'] == '1']
 setup_tests = []
@@ -824,33 +824,38 @@ with PdfPages(output_supp_pdf) as pdf:
     fig_table2, ax_table2 = plt.subplots(figsize=(18, 9))  # Same extra wide size
     ax_table2.axis('tight')
     ax_table2.axis('off')
-    ax_table2.set_title('Supplementary Table 2: Percentage Difference Statistics\n(Mean / Std per Metric)', fontsize=13, fontweight='bold', pad=15)
+    ax_table2.set_title('Supplementary Table 2: Percentage Difference Statistics', fontsize=13, fontweight='bold', pad=15)
 
-    # Shorten column names for display (without Median)
-    stats_short_names = {'Setup': 'Setup'}
+    # Create two-line headers: Metric name in first line, Statistic in second line
+    stats_col_labels = ['Setup']
     for col in supp_stats_df.columns:
-        if col != 'Setup':
-            short = col.replace('_Mean', '_M').replace('_Std', '_S')
-            short = short.replace('RTOG_CI', 'RTOG').replace('Dmax%', 'Dmax')
-            stats_short_names[col] = short
-
-    stats_col_labels = [stats_short_names.get(c, c) for c in supp_stats_df.columns]
+        if col == 'Setup':
+            continue
+        # Parse column name: e.g., "CI_Mean" -> "CI\nMean", "CI_Std" -> "CI\nSD"
+        if '_Mean' in col:
+            metric_name = col.replace('_Mean', '')
+            stats_col_labels.append(f'{metric_name}\nMean')
+        elif '_Std' in col:
+            metric_name = col.replace('_Std', '')
+            stats_col_labels.append(f'{metric_name}\nSD')
+        else:
+            stats_col_labels.append(col)
 
     table2 = ax_table2.table(
         cellText=supp_stats_df.round(2).values,
         colLabels=stats_col_labels,
         cellLoc='center',
         loc='center',
-        bbox=[0.01, 0.08, 0.98, 0.84]  # Same very wide bbox
+        bbox=[0.01, 0.08, 0.98, 0.84]
     )
     table2.auto_set_font_size(False)
     table2.set_fontsize(7)
-    table2.scale(1, 1.1)  # Same very low row height
+    table2.scale(1, 0.9)  # Lower row height
 
-    # Style header row
+    # Style header row - smaller font for two-line headers
     for i in range(len(stats_col_labels)):
         table2[(0, i)].set_facecolor('#4472C4')
-        table2[(0, i)].set_text_props(weight='bold', color='white', size=7)
+        table2[(0, i)].set_text_props(weight='bold', color='white', size=6)
 
     pdf.savefig(fig_table2, dpi=300, bbox_inches='tight', orientation='landscape')
     plt.close(fig_table2)
