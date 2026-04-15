@@ -787,34 +787,44 @@ with PdfPages(output_supp_pdf) as pdf:
     ax_table1.axis('off')
     ax_table1.set_title('Supplementary Table 1: Comprehensive Metrics by Setup', fontsize=13, fontweight='bold', pad=15)
 
-    # Prepare table data with shortened column names
-    short_names = {'Setup': 'Setup', 'N': 'N'}
+    # Prepare display columns
+    display_cols = ['Setup', 'N']
     for metric in ['PaddickCI', 'RTOG_CI', 'GI', 'HI', 'Coverage_pct', 'D50_Gy', 'D98_Gy', 'Dmax_Gy']:
-        m_short = metric.replace('_Gy', '').replace('Coverage_pct', 'V100%').replace('PaddickCI', 'CI')
-        short_names[f'{metric}_Mean'] = f'{m_short}_M'
-        short_names[f'{metric}_Std'] = f'{m_short}_S'
+        if f'{metric}_Mean' in supp_all_df.columns:
+            display_cols.append(f'{metric}_Mean')
+        if f'{metric}_Std' in supp_all_df.columns:
+            display_cols.append(f'{metric}_Std')
 
-    display_cols = ['Setup', 'N'] + [c for c in short_names.keys() if c not in ['Setup', 'N']]
     display_cols = [c for c in display_cols if c in supp_all_df.columns]
-
     table_data = supp_all_df[display_cols].round(3)
-    col_labels = [short_names.get(c, c) for c in display_cols]
+
+    # Create two-line headers: Metric name in first line, Statistic in second line
+    col_labels = ['Setup', 'N']
+    for col in display_cols[2:]:  # Skip Setup and N
+        if '_Mean' in col:
+            metric_name = col.replace('_Mean', '').replace('_Gy', '').replace('Coverage_pct', 'V100%').replace('PaddickCI', 'CI')
+            col_labels.append(f'{metric_name}\nMean')
+        elif '_Std' in col:
+            metric_name = col.replace('_Std', '').replace('_Gy', '').replace('Coverage_pct', 'V100%').replace('PaddickCI', 'CI')
+            col_labels.append(f'{metric_name}\nSD')
+        else:
+            col_labels.append(col)
 
     table1 = ax_table1.table(
         cellText=table_data.values,
         colLabels=col_labels,
         cellLoc='center',
         loc='center',
-        bbox=[0.01, 0.08, 0.98, 0.84]  # Very wide bbox
+        bbox=[0.01, 0.08, 0.98, 0.84]
     )
     table1.auto_set_font_size(False)
     table1.set_fontsize(7)
-    table1.scale(1, 1.1)  # Very low row height
+    table1.scale(1, 0.9)  # Lower row height
 
-    # Style header row
+    # Style header row - smaller font for two-line headers
     for i in range(len(col_labels)):
         table1[(0, i)].set_facecolor('#4472C4')
-        table1[(0, i)].set_text_props(weight='bold', color='white')
+        table1[(0, i)].set_text_props(weight='bold', color='white', size=6)
 
     pdf.savefig(fig_table1, dpi=300, bbox_inches='tight', orientation='landscape')
     plt.close(fig_table1)
