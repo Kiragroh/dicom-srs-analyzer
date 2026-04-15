@@ -748,6 +748,11 @@ output_supp_fig = os.path.join(config.OUTPUT_DIR, 'supplementary_all_metrics_sub
 fig_supp.savefig(output_supp_fig, dpi=600, bbox_inches='tight')
 print(f"\nSupplementary figure saved to '{output_supp_fig}'")
 
+# Also save as PDF for publication
+output_supp_pdf = os.path.join(config.OUTPUT_DIR, 'supplementary_all_metrics_subplots.pdf')
+fig_supp.savefig(output_supp_pdf, dpi=300, bbox_inches='tight', format='pdf')
+print(f"Supplementary figure (PDF) saved to '{output_supp_pdf}'")
+
 # Supplementary statistics table
 print("\n=== Supplementary Statistics by Metric ===")
 supp_stats = []
