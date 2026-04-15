@@ -258,7 +258,7 @@ python main_paper-visualize-ci-gi.py
 | File | Description |
 |---|---|
 | `ci_gi_percentage_diff.png` | Boxplots: % difference in CI/GI vs reference (3 rows: all/small/large volumes) |
-| `combined_ci_gi_d98_v100_percentage_diff.png` | Combined metrics (CI, GI, D98%, V100%) |
+| `combined_ci_gi_d98_percentage_diff.png` | Combined metrics (CI, GI, D98%) |
 | `ci_gi_absolute_values.png` | Absolute CI/GI values across setups |
 | `ci_gi_statistics.xlsx` | Statistics by setup error |
 | `combined_metrics_statistics.xlsx` | Combined metrics statistics |

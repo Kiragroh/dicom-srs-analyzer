@@ -65,10 +65,10 @@ if df_original is not None:
     print("\nUnique ptvs_clean in original (s2):", df_original[df_original['MRN'] == 'zz_Complex_MM_UKE_s2']['ptvs_clean'].unique())
     print("\nUnique ptvs_clean in metrics (s2):", df_metrics_ha[df_metrics_ha['PatientFolder'] == 'zz_Complex_MM_UKE_s2']['ptvs_clean'].unique())
 
-    # Merge the dataframes using ptvs_clean and Tx (include Coverage_pct)
+    # Merge the dataframes using ptvs_clean and Tx
     df_merged = df_original.merge(
         df_metrics_ha[['PatientFolder', 'StructureName_Original', 'ptvs_clean', 'Tx',
-                       'PaddickCI', 'RTOG_CI', 'GI', 'HI', 'Coverage_pct']],
+                       'PaddickCI', 'RTOG_CI', 'GI', 'HI']],
         left_on=['MRN', 'ptvs_clean', 'Tx'],
         right_on=['PatientFolder', 'ptvs_clean', 'Tx'],
         how='left'
@@ -94,7 +94,7 @@ print(f"Rows with GI data: {df_merged['GI'].notna().sum()}")
 
 # Show sample of merged data
 print("\nSample merged data:")
-print(df_merged[['MRN', 'ptvs', 'Tx', 'PaddickCI', 'GI', 'Coverage_pct', 'D98%[%]']].head(20))
+print(df_merged[['MRN', 'ptvs', 'Tx', 'PaddickCI', 'GI', 'D98%[%]']].head(20))
 
 # Save merged data for verification
 output_excel = os.path.join(config.OUTPUT_DIR, 'merged_data_with_ci_gi.xlsx')
@@ -263,18 +263,17 @@ output_stats1 = os.path.join(config.OUTPUT_DIR, 'ci_gi_statistics.xlsx')
 ci_gi_stats.to_excel(output_stats1)
 print(f"\nStatistics saved to '{output_stats1}'")
 
-# ===== COMBINED PLOT: CI, GI, D98%, Coverage =====
-print("\n=== Creating Combined Plot (CI, GI, D98%, Coverage) ===")
+# ===== COMBINED PLOT: CI, GI, D98% =====
+print("\n=== Creating Combined Plot (CI, GI, D98%) ===")
 
-# Get D98% and Coverage from metrics data
+# Get D98% from metrics data
 df_combined = df_merged.copy()
-df_combined = df_combined.dropna(subset=['PaddickCI', 'GI', 'D98%[%]', 'Coverage_pct'])
+df_combined = df_combined.dropna(subset=['PaddickCI', 'GI', 'D98%[%]'])
 
 # Convert all to numeric
 df_combined['PaddickCI'] = pd.to_numeric(df_combined['PaddickCI'].astype(str).str.replace('*', ''), errors='coerce')
 df_combined['GI'] = pd.to_numeric(df_combined['GI'].astype(str).str.replace('*', ''), errors='coerce')
 df_combined['D98%[%]'] = pd.to_numeric(df_combined['D98%[%]'], errors='coerce')
-df_combined['Coverage_pct'] = pd.to_numeric(df_combined['Coverage_pct'], errors='coerce')
 
 # Map Tx to Setup labels
 df_combined['Setup'] = df_combined['Tx'].map(tx_mapping)
@@ -289,8 +288,7 @@ for tx in ['HA_2', 'HA_3', 'HA_4', 'HA_5', 'HA_6']:
     for metric_name, metric_col in [
         ('CI', 'PaddickCI'),
         ('GI', 'GI'),
-        ('D98%', 'D98%[%]'),
-        ('V100%', 'Coverage_pct')
+        ('D98%', 'D98%[%]')
     ]:
         for (mrn, ptv) in tx_data.index:
             if (mrn, ptv) in ha1_ref.index and (mrn, ptv) in tx_data.index:
@@ -313,7 +311,7 @@ for tx in ['HA_2', 'HA_3', 'HA_4', 'HA_5', 'HA_6']:
 combined_diff_df = pd.DataFrame(combined_diff_data)
 print(f"Combined diff data shape: {combined_diff_df.shape}")
 print(f"Rows per metric:")
-for m in ['CI', 'GI', 'D98%', 'V100%']:
+for m in ['CI', 'GI', 'D98%']:
     print(f"  {m}: {(combined_diff_df['Metric'] == m).sum()}")
 
 # Create combined plot with 3x1 subplots (all volumes, small, large)
@@ -323,8 +321,8 @@ large_vol_idx = df_combined[(df_combined['Tx'] == 'HA_1') & (df_combined['volume
 
 fig_comb, (ax1_comb, ax2_comb, ax3_comb) = plt.subplots(3, 1, figsize=(12, 6.5), sharex=True, sharey=True)
 
-# Colors for 4 metrics
-colors_comb = {'CI': '#1f77b4', 'GI': '#ff7f0e', 'D98%': '#2ca02c', 'V100%': '#d62728'}
+# Colors for 3 metrics
+colors_comb = {'CI': '#1f77b4', 'GI': '#ff7f0e', 'D98%': '#2ca02c'}
 
 def create_combined_boxplot(data, ax, title):
     sns.boxplot(data=data, x='Setup', y='Difference', hue='Metric', 
@@ -338,7 +336,7 @@ def create_combined_boxplot(data, ax, title):
             mean_val = metric_data['Difference'].mean()
             
             setup_idx = list(data['Setup'].unique()).index(setup)
-            metric_order = ['CI', 'V100%', 'GI', 'D98%']
+            metric_order = ['CI', 'GI', 'D98%']
             if metric in metric_order:
                 offset = (metric_order.index(metric) - 1.5) * 0.15
                 x_pos = setup_idx + offset
@@ -380,13 +378,13 @@ fig_comb.text(0.06, 0.55, 'relative difference to no setup error (%)',
               va='center', rotation='vertical')
 
 # Legend - placed at top of figure
-legend_comb = ax1_comb.legend(title='metric', bbox_to_anchor=(0.5, 1.15), loc='lower center', ncol=4)
+legend_comb = ax1_comb.legend(title='metric', bbox_to_anchor=(0.5, 1.15), loc='lower center', ncol=3)
 legend_comb.get_frame().set_alpha(0.5)
 
 plt.tight_layout()
 plt.subplots_adjust(left=0.12, right=0.95, top=0.90)
 
-output_fig2 = os.path.join(config.OUTPUT_DIR, 'combined_ci_gi_d98_v100_percentage_diff.png')
+output_fig2 = os.path.join(config.OUTPUT_DIR, 'combined_ci_gi_d98_percentage_diff.png')
 fig_comb.savefig(output_fig2, dpi=600, bbox_inches='tight')
 print(f"\nCombined figure saved to '{output_fig2}'")
 
@@ -396,7 +394,7 @@ combined_stats = []
 for setup in combined_diff_df['Setup'].unique():
     setup_data = combined_diff_df[combined_diff_df['Setup'] == setup]
     stats_row = {'Setup': setup}
-    for metric in ['CI', 'GI', 'D98%', 'V100%']:
+    for metric in ['CI', 'GI', 'D98%']:
         metric_data = setup_data[setup_data['Metric'] == metric]['Difference']
         if len(metric_data) > 0:
             stats_row[f'{metric}_Mean'] = metric_data.mean()
