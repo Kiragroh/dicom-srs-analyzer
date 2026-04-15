@@ -1,0 +1,11 @@
+# Nur HTML, kein PNG (schneller)
+python plot_3d_from_dicom.py --resolution high --no-png
+ 
+# Ultra-Auflösung (40.000 Dreiecke, sehr detailliert aber langsam)
+python plot_3d_from_dicom.py --resolution ultra
+ 
+# Nur ein Patient
+python plot_3d_from_dicom.py --resolution high --patient zz_Complex_MM_UKE_s2
+ 
+# Nur HA-Pläne
+python plot_3d_from_dicom.py --resolution high --plan-type HA

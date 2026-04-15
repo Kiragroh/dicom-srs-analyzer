@@ -115,6 +115,8 @@ def _match_structures(metrics_df: pd.DataFrame, patient: str,
         out["CI_uncertain"]       = bool(row.get("CI_uncertain", False))
         out["GI_uncertain"]       = bool(row.get("GI_uncertain", False))
         out["Bridging_suspected"] = bool(row.get("Bridging_suspected", False))
+        out["CI_low"]             = bool(row.get("CI_low", False))
+        out["GI_high"]            = bool(row.get("GI_high", False))
         out["Rx_dose"]            = float(row.get("Rx_Gy", 0) or 0)
         out["Error"]              = str(row.get("Error", "") or "")
         return out
@@ -318,7 +320,10 @@ tr:hover td{background:#0e1a28}
 .delta-neutral{color:#999}
 .missing{color:#555;font-style:italic}
 .warn-badge{color:#ffaa44;font-size:10px;background:#2a2000;border:1px solid #ffaa44;border-radius:3px;padding:1px 4px;margin-left:4px}
-.bridge-badge{color:#ff6688;font-size:10px;background:#3a1a22;border:1px solid #ff6688;border-radius:3px;padding:1px 4px;margin-left:4px}
+.uncertain-badge{color:#ffaa44;font-size:10px;font-weight:bold;margin-left:6px}
+.bridging-badge{color:#ff6688;font-size:10px;background:#3a1a22;border:1px solid #ff6688;border-radius:3px;padding:1px 4px;margin-left:6px}
+.ci_low{background-color: #ffcccc;}
+.gi_high{background-color: #ffdddd;}
 .dvh-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
 .dvh-card{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:10px}
 .dvh-card h4{color:#aaddff;font-size:12px;margin-bottom:8px}
@@ -509,7 +514,9 @@ function buildMetricsTab(p) {
     var badges = '';
     if (s.only_in === 'a') badges = ' <span class="warn-badge">only ' + p.plan_a + '</span>';
     if (s.only_in === 'b') badges = ' <span class="warn-badge">only ' + p.plan_b + '</span>';
-    if ((ma.Bridging_suspected || mb.Bridging_suspected)) badges += ' <span class="bridge-badge">bridge</span>';
+    if ((ma.Bridging_suspected || mb.Bridging_suspected)) badges += ' <span class="bridging-badge">bridge</span>';
+    if ((ma.CI_low || mb.CI_low)) badges += ' <span class="ci_low">low CI</span>';
+    if ((ma.GI_high || mb.GI_high)) badges += ' <span class="gi_high">high GI</span>';
     html += '<td class="struct-name">' + s.new_name + badges + '</td>';
     var rx = (ma.Rx_dose || mb.Rx_dose || 0);
     html += '<td>' + (rx ? rx.toFixed(0) : '–') + '</td>';

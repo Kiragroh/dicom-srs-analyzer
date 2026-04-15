@@ -190,6 +190,8 @@ def _build_html(
   .uncertain-badge {{ color:#ffaa44; font-size:10px; font-weight:bold; margin-left:6px; }}
   .bridging-badge {{ color:#ff6688; font-size:10px; font-weight:bold; margin-left:6px;
                      background:#3a1a22; border:1px solid #ff6688; border-radius:3px; padding:1px 4px; }}
+  .ci_low {{ background-color: #ffcccc; }}
+  .gi_high {{ background-color: #ffdddd; }}
   #view-panel {{
     display:none; position:fixed; top:0; right:0;
     width:300px; height:100vh; background:#1a1a2e;
@@ -232,6 +234,14 @@ Click any table row to view orthogonal dose images</p>
     <div class="legend-item" style="margin-top:8px">
       <span class="bridging-badge" style="font-size:11px">bridge</span>
       <span><strong>Dose bridging suspected</strong> &ndash; Paddick CI &lt;&nbsp;0.8 and PIV grows by &gt;&nbsp;15&nbsp;% when the sampling radius increases from 5&nbsp;mm to 10&nbsp;mm. A neighbouring high-dose region is likely being captured &rarr; PIV / CI may be artificially inflated.</span>
+    </div>
+    <div class="legend-item" style="margin-top:8px">
+      <span class="ci_low" style="padding:1px 6px;border-radius:3px">low CI</span>
+      <span><strong>Low Conformity Index</strong> &ndash; Paddick CI &lt;&nbsp;0.7.</span>
+    </div>
+    <div class="legend-item" style="margin-top:4px">
+      <span class="gi_high" style="padding:1px 6px;border-radius:3px">high GI</span>
+      <span><strong>High Gradient Index</strong> &ndash; GI &gt;&nbsp;5.0.</span>
     </div>
   </div>
   <div>
@@ -366,12 +376,16 @@ def _section_overview(df: pd.DataFrame) -> str:
         ci_u  = bool(r.get('CI_uncertain', False))
         gi_u  = bool(r.get('GI_uncertain', False))
         br_u  = bool(r.get('Bridging_suspected', False))
+        ci_l  = bool(r.get('CI_low', False))
+        gi_h  = bool(r.get('GI_high', False))
         
         # Apply anonymization if enabled
         display_patient = anonymize_patient_id(r['PatientFolder']) if ANONYMIZE_OUTPUT else r['PatientFolder']
         display_struct = anonymize_structure_name(r.get('NewStructureName','') or r.get('StructureName_Original','')) if ANONYMIZE_OUTPUT else (r.get('NewStructureName','') or r.get('StructureName_Original',''))
         
         bridge_span = '<span class="bridging-badge">bridge</span>' if br_u else ''
+        ci_span = '<span class="ci_low">low CI</span>' if ci_l else ''
+        gi_span = '<span class="gi_high">high GI</span>' if gi_h else ''
         rows_html.append(
             f'<tr data-patient="{pat}" data-plan="{plan}" '
             f'data-struct="{orig}" data-scenario="nominal">'
@@ -381,10 +395,10 @@ def _section_overview(df: pd.DataFrame) -> str:
             f"<td>{_fmt(r.get('TV_cc'),3)}</td>"
             f"<td>{_fmt(r.get('DistToIso_mm'),1)}</td>"
             f"<td style='{_cell_colour('Coverage_pct', _safe_float(r.get('Coverage_pct')))}'>{_fmt(r.get('Coverage_pct'),1)}</td>"
-            f"<td style='{_cell_colour('PaddickCI', _safe_float(r.get('PaddickCI')))}'>{_fmu(r.get('PaddickCI'),3,ci_u)}{bridge_span}</td>"
-            f"<td style='{_cell_colour('RTOG_CI',   _safe_float(r.get('RTOG_CI')))}'>{_fmu(r.get('RTOG_CI'),3,ci_u)}</td>"
-            f"<td style='{_cell_colour('HI',         _safe_float(r.get('HI')))}'>{_fmt(r.get('HI'),3)}</td>"
-            f"<td style='{_cell_colour('GI',         _safe_float(r.get('GI')))}'>{_fmu(r.get('GI'),2,gi_u)}</td>"
+            f"<td style='{_cell_colour('PaddickCI', _safe_float(r.get('PaddickCI')))}'>{_fmu(r.get('PaddickCI'),3,ci_u)}{bridge_span}{ci_span}</td>"
+            f"<td style='{_cell_colour('RTOG_CI', _safe_float(r.get('RTOG_CI')))}'>{_fmu(r.get('RTOG_CI'),3,ci_u)}{ci_span}</td>"
+            f"<td style='{_cell_colour('HI', _safe_float(r.get('HI')))}'>{_fmt(r.get('HI'),3)}</td>"
+            f"<td style='{_cell_colour('GI', _safe_float(r.get('GI')))}'>{_fmu(r.get('GI'),2,gi_u)}{gi_span}</td>"
             f"<td>{_fmt(r.get('Dmax_Gy'),2)}</td>"
             f"<td>{_fmt(r.get('PIV_cc'),3)}</td>"
             f"<td>{_fmt(r.get('V12Gy_cc'),3)}</td>"
@@ -443,7 +457,11 @@ def _subsection_plan(plan_type: str, plan_df: pd.DataFrame, patient: str) -> str
             ci_u = bool(r.get('CI_uncertain', False))
             gi_u = bool(r.get('GI_uncertain', False))
             br_u = bool(r.get('Bridging_suspected', False))
+            ci_l = bool(r.get('CI_low', False))
+            gi_h = bool(r.get('GI_high', False))
             bridge_span2 = '<span class="bridging-badge">bridge</span>' if br_u else ''
+            ci_span2 = '<span class="ci_low">low CI</span>' if ci_l else ''
+            gi_span2 = '<span class="gi_high">high GI</span>' if gi_h else ''
             rows_html.append(
                 f'<tr class="{row_cls}" data-patient="{pat_da}" data-plan="{plan_da}" '
                 f'data-struct="{orig_da}" data-scenario="{sc_da}">'
@@ -451,10 +469,10 @@ def _subsection_plan(plan_type: str, plan_df: pd.DataFrame, patient: str) -> str
                 f"<td>{_fmt(r.get('TV_cc'),3)}</td>"
                 f"<td>{_fmt(r.get('DistToIso_mm'),1)}</td>"
                 f"<td style='{_cell_colour('Coverage_pct', _safe_float(r.get('Coverage_pct')))}'>{_fmt(r.get('Coverage_pct'),1)}</td>"
-                f"<td style='{_cell_colour('PaddickCI', _safe_float(r.get('PaddickCI')))}'>{_fmu(r.get('PaddickCI'),3,ci_u)}{bridge_span2}</td>"
-                f"<td style='{_cell_colour('RTOG_CI', _safe_float(r.get('RTOG_CI')))}'>{_fmu(r.get('RTOG_CI'),3,ci_u)}</td>"
+                f"<td style='{_cell_colour('PaddickCI', _safe_float(r.get('PaddickCI')))}'>{_fmu(r.get('PaddickCI'),3,ci_u)}{bridge_span2}{ci_span2}</td>"
+                f"<td style='{_cell_colour('RTOG_CI', _safe_float(r.get('RTOG_CI')))}'>{_fmu(r.get('RTOG_CI'),3,ci_u)}{ci_span2}</td>"
                 f"<td style='{_cell_colour('HI', _safe_float(r.get('HI')))}'>{_fmt(r.get('HI'),3)}</td>"
-                f"<td style='{_cell_colour('GI', _safe_float(r.get('GI')))}'>{_fmu(r.get('GI'),2,gi_u)}</td>"
+                f"<td style='{_cell_colour('GI', _safe_float(r.get('GI')))}'>{_fmu(r.get('GI'),2,gi_u)}{gi_span2}</td>"
                 f"<td>{_fmt(r.get('Dmax_Gy'),2)}</td>"
                 f"<td>{_fmt(r.get('PIV_cc'),3)}</td>"
                 f"<td>{_fmt(r.get('V12Gy_cc'),3)}</td>"
@@ -468,6 +486,8 @@ def _subsection_plan(plan_type: str, plan_df: pd.DataFrame, patient: str) -> str
         n_ci_u = struct_df.get("CI_uncertain", pd.Series([False]*len(struct_df), index=struct_df.index)).astype(bool).sum()
         n_gi_u = struct_df.get("GI_uncertain", pd.Series([False]*len(struct_df), index=struct_df.index)).astype(bool).sum()
         n_br   = struct_df.get("Bridging_suspected", pd.Series([False]*len(struct_df), index=struct_df.index)).astype(bool).sum()
+        n_ci_l = struct_df.get("CI_low", pd.Series([False]*len(struct_df), index=struct_df.index)).astype(bool).sum()
+        n_gi_h = struct_df.get("GI_high", pd.Series([False]*len(struct_df), index=struct_df.index)).astype(bool).sum()
         unc_hint = ""
         if n_ci_u: unc_hint += f' <span class="uncertain-badge">* CI ({n_ci_u}x)</span>'
         if n_gi_u: unc_hint += f' <span class="uncertain-badge">* GI ({n_gi_u}x)</span>'

@@ -173,6 +173,32 @@ VIEW_HALF_MM = 35.0
 VIEW_DPI = 120
 
 # ---------------------------------------------------------------------------
+# 3-D structure + shift visualisation
+# ---------------------------------------------------------------------------
+
+# Set True to generate one 3D PNG per patient/plan showing PTV contours
+# and isocenter shift vectors for all non-nominal scenarios.
+ENABLE_3D_PLOTS = True
+
+# Output folder for 3D PNG files
+PLOT_3D_DIR = os.path.join(OUTPUT_DIR, "3d_plots")
+
+# Rendering mode for 3D plots:
+#   "wireframe_shift"   – gray wireframe (nominal) + coloured fill (shifted)  [default]
+#   "difference_volume" – blue wireframe (nominal) + red fill (shifted)
+PLOT_3D_RENDER_MODE = "wireframe_shift"
+
+# Mesh resolution for 3D plots.
+#   PLOT_3D_MAX_FACES : max triangular faces per mesh object.
+#                       2500=fast/coarse  8000=good  20000=fine  50000=ultra
+#   PLOT_3D_ISO_STRIDE: voxel stride used when running marching-cubes on the
+#                       dose grid.  1=full resolution  2=half  3=third
+#   Convenience presets via --resolution flag (overrides both values):
+#     low=1500/3  medium=5000/2  high=12000/1  ultra=40000/1
+PLOT_3D_MAX_FACES  = 12000
+PLOT_3D_ISO_STRIDE = 1
+
+# ---------------------------------------------------------------------------
 # Plan type identifier strings (searched in filename, case-insensitive)
 # ---------------------------------------------------------------------------
 PLAN_TYPE_HA = "HA"

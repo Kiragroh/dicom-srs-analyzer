@@ -83,6 +83,8 @@ class MetricResult:
     ci_uncertain:     bool  = False   # True when 100%-Rx isodose hits sampling boundary
     gi_uncertain:     bool  = False   # True when 50%-Rx isodose hits sampling boundary
     bridging_suspected: bool = False  # True when PIV grows with small radius increase (adjacent dose)
+    ci_low:           bool  = False   # CI < 0.55 (poor conformity)
+    gi_high:          bool  = False   # GI > 7 (high gradient index)
 
     error_message:    str = ""
 
@@ -309,6 +311,8 @@ def _merge_metrics(fine: dict, expanded: dict) -> dict:
     result["ci_uncertain"] = expanded["ci_uncertain"]
     result["gi_uncertain"] = expanded["gi_uncertain"]
     result["bridging_suspected"] = expanded.get("bridging_suspected", False)
+    result["ci_low"] = result["rtogCI"] < 0.55
+    result["gi_high"] = result["GI"] > 7.0
     return result
 
 
@@ -321,6 +325,8 @@ def calculate_all_metrics(
     dose: DoseData,
     rx_dose: float,
     progress_cb=None,
+    ci_bridging: bool = False,
+    gi_bridging: bool = False,
 ) -> dict:
     """
     Compute metrics with adaptive grid refinement + fixed-margin boundary scan.
@@ -371,16 +377,25 @@ def calculate_all_metrics(
         radial_mask=True,
     )
 
-    # --- Pass 2b: CI closure check (15 mm → 17 mm radial) ---
-    ci_check = _calculate_metrics_for_step(
-        structure, dose, rx_dose,
-        step=BOUNDARY_EXPAND_STEP_MM,
-        extra_margin=BOUNDARY_MARGIN_CI_MM + BOUNDARY_CLOSURE_DELTA_MM,
-        radial_mask=True,
-    )
-    piv_a  = ci_metrics["PIV"]
-    piv_b  = ci_check["PIV"]
-    ci_unc = (abs(piv_b - piv_a) / piv_a > PIV_CLOSURE_TOL) if piv_a > 0 else False
+    piv_a = ci_metrics["PIV"]
+    if ci_bridging:
+        # User marked this PTV as bridging for CI – accept the standard margin result
+        # as-is without a closure check, and suppress the uncertainty flag.
+        ci_unc = False
+        logger.debug(
+            "    %s: CI_bridging override – using fixed %g mm margin, ci_unc suppressed",
+            structure.name, BOUNDARY_MARGIN_CI_MM,
+        )
+    else:
+        # --- Pass 2b: CI closure check (10 mm → 12 mm radial) ---
+        ci_check = _calculate_metrics_for_step(
+            structure, dose, rx_dose,
+            step=BOUNDARY_EXPAND_STEP_MM,
+            extra_margin=BOUNDARY_MARGIN_CI_MM + BOUNDARY_CLOSURE_DELTA_MM,
+            radial_mask=True,
+        )
+        piv_b  = ci_check["PIV"]
+        ci_unc = (abs(piv_b - piv_a) / piv_a > PIV_CLOSURE_TOL) if piv_a > 0 else False
 
     # --- Pass 3a: GI expansion – radial 20 mm, 1 mm grid → V_half_Rx (50 % Rx) ---
     gi_metrics = _calculate_metrics_for_step(
@@ -390,22 +405,33 @@ def calculate_all_metrics(
         radial_mask=True,
     )
 
-    # --- Pass 3b: GI closure check (20 mm → 22 mm radial) ---
-    gi_check = _calculate_metrics_for_step(
-        structure, dose, rx_dose,
-        step=BOUNDARY_EXPAND_STEP_MM,
-        extra_margin=BOUNDARY_MARGIN_GI_MM + BOUNDARY_CLOSURE_DELTA_MM,
-        radial_mask=True,
-    )
     vhalf_a = gi_metrics["_V_half_Rx"]
-    vhalf_b = gi_check["_V_half_Rx"]
-    gi_unc  = (abs(vhalf_b - vhalf_a) / vhalf_a > VHALF_CLOSURE_TOL) if vhalf_a > 0 else False
+    if gi_bridging:
+        # User marked this PTV as bridging for GI – accept the standard margin result
+        # as-is without a closure check, and suppress the uncertainty flag.
+        gi_unc = False
+        logger.debug(
+            "    %s: GI_bridging override – using fixed %g mm margin, gi_unc suppressed",
+            structure.name, BOUNDARY_MARGIN_GI_MM,
+        )
+    else:
+        # --- Pass 3b: GI closure check (15 mm → 17 mm radial) ---
+        gi_check = _calculate_metrics_for_step(
+            structure, dose, rx_dose,
+            step=BOUNDARY_EXPAND_STEP_MM,
+            extra_margin=BOUNDARY_MARGIN_GI_MM + BOUNDARY_CLOSURE_DELTA_MM,
+            radial_mask=True,
+        )
+        vhalf_b = gi_check["_V_half_Rx"]
+        gi_unc  = (abs(vhalf_b - vhalf_a) / vhalf_a > VHALF_CLOSURE_TOL) if vhalf_a > 0 else False
 
+    _piv_b   = piv_a   if ci_bridging else piv_b    # noqa: undefined when bridging
+    _vhalf_b = vhalf_a if gi_bridging else vhalf_b
     logger.debug(
         "    %s: PIV %.4f\u2192%.4f (%.1f%%) Vhalf %.4f\u2192%.4f (%.1f%%) \u2192 ci_unc=%s gi_unc=%s",
         structure.name,
-        piv_a, piv_b, 100 * (piv_b - piv_a) / max(piv_a, 1e-9),
-        vhalf_a, vhalf_b, 100 * (vhalf_b - vhalf_a) / max(vhalf_a, 1e-9),
+        piv_a, _piv_b, 100 * (_piv_b - piv_a) / max(piv_a, 1e-9),
+        vhalf_a, _vhalf_b, 100 * (_vhalf_b - vhalf_a) / max(vhalf_a, 1e-9),
         ci_unc, gi_unc,
     )
 
@@ -532,7 +558,13 @@ def compute_metrics_for_plan(
         )
 
         try:
-            m = calculate_all_metrics(struct, used_dose, rx)
+            def _is_flag(val) -> bool:
+                return str(val).strip().lower() in {"true", "1", "ja", "yes", "x"}
+            ci_bridging = _is_flag(row.get("CI_bridging", ""))
+            gi_bridging = _is_flag(row.get("GI_bridging", ""))
+            m = calculate_all_metrics(struct, used_dose, rx,
+                                      ci_bridging=ci_bridging,
+                                      gi_bridging=gi_bridging)
             centroid = compute_centroid(struct)
             if centroid is not None and isocenter is not None:
                 dist_iso = float(np.linalg.norm(centroid - isocenter))
@@ -551,6 +583,8 @@ def compute_metrics_for_plan(
                 ci_uncertain=bool(m.get("ci_uncertain", False)),
                 gi_uncertain=bool(m.get("gi_uncertain", False)),
                 bridging_suspected=bool(m.get("bridging_suspected", False)),
+                ci_low=bool(m.get("ci_low", False)),
+                gi_high=bool(m.get("gi_high", False)),
                 **{k: m[k] for k in [
                     "TV", "coverage", "paddickCI", "rtogCI", "HI", "GI",
                     "Dmax", "PIV", "V12Gy", "D2", "D98", "D50",
@@ -623,9 +657,9 @@ def results_to_dataframe(results: List[MetricResult]):
             "TV_cc":               r.TV,
             "Coverage_pct":        r.coverage * 100 if not _isnan(r.coverage) else float("nan"),
             "PaddickCI":           r.paddickCI,
-            "RTOG_CI":             r.rtogCI,
+            "RTOG_CI":             f"{r.rtogCI:.3f}*" if r.ci_uncertain else f"{r.rtogCI:.3f}",
             "HI":                  r.HI,
-            "GI":                  r.GI,
+            "GI":                  f"{r.GI:.2f}*" if r.gi_uncertain else f"{r.GI:.2f}",
             "Dmax_Gy":             r.Dmax,
             "PIV_cc":              r.PIV,
             "V12Gy_cc":            r.V12Gy,
@@ -638,6 +672,8 @@ def results_to_dataframe(results: List[MetricResult]):
             "CI_uncertain":        r.ci_uncertain,
             "GI_uncertain":        r.gi_uncertain,
             "Bridging_suspected":  r.bridging_suspected,
+            "CI_low":              r.ci_low,
+            "GI_high":             r.gi_high,
             "Error":               r.error_message,
         })
     return pd.DataFrame(records)

@@ -37,6 +37,8 @@ MAPPING_COLUMNS = [
     "Prescription_Gy_reference", # EDITABLE: override Rx here → auto-renames PTV##_##Gy
     "NewStructureName",        # EDITABLE: custom name (or leave for auto PTV##_##Gy)
     "Comment",                 # EDITABLE: notes
+    "CI_bridging",             # EDITABLE: True → force standard CI margin (no closure check)
+    "GI_bridging",             # EDITABLE: True → force standard GI margin (no closure check)
 ]
 
 # Columns that may only be set manually – never overwritten by the pipeline
@@ -45,6 +47,8 @@ MANUAL_COLUMNS = {
     "ExcludeReason",
     "NewStructureName",
     "Comment",
+    "CI_bridging",
+    "GI_bridging",
 }
 # Note: Prescription_Gy_reference is AUTO-POPULATED from detected value on first
 # run ("update if empty" rule), so users can edit it directly without knowing the
@@ -116,6 +120,8 @@ def save_mapping(df: pd.DataFrame, path: str = MAPPING_EXCEL_PATH) -> None:
                 "ExcludeFromAnalysis":        "FFE0E0",  # light red
                 "NewStructureName":            "E0F0FF",  # light blue
                 "Comment":                     "F0F0F0",  # light gray
+                "CI_bridging":                 "FFE8D0",  # light orange – bridging override
+                "GI_bridging":                 "FFE8D0",  # light orange – bridging override
             }
             for col_name, color in highlight_cols.items():
                 if col_name in headers:
@@ -265,6 +271,8 @@ def build_mapping_rows(
             "Prescription_Gy_reference":  str(int(rx_detected)) if rx_detected else "",  # pre-populated; user may override
             "NewStructureName":        "",   # assigned later after merge
             "Comment":                 "",   # manual
+            "CI_bridging":             "",   # manual – set True to force standard CI margin
+            "GI_bridging":             "",   # manual – set True to force standard GI margin
         })
         rows.append(row)
         logger.debug(

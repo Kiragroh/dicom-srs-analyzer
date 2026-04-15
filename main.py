@@ -34,6 +34,7 @@ from config import (
     ENABLE_COMPARISON, COMPARE_REPORT_PATH,
     ENABLE_SHIFT_PLOTS, SHIFT_PLOTS_DIR,
     ENABLE_DVH_PLOTS, DVH_PLOTS_DIR,
+    ENABLE_3D_PLOTS, PLOT_3D_DIR, PLOT_3D_RENDER_MODE,
 )
 from dicom_io import (
     scan_patient_folders, find_plan_files, apply_debug_filter, load_plan,
@@ -54,6 +55,7 @@ from html_report import generate_report
 from comparison import generate_comparison_report
 from plot_shift import generate_shift_plots
 from dvh_plot import generate_dvh_plot
+from plot_3d import generate_3d_plots
 
 
 # ---------------------------------------------------------------------------
@@ -391,6 +393,30 @@ def phase_h() -> None:
         logger.info("  No shift plots generated (insufficient data or only nominal scenario).")
 
 
+def phase_i(
+    plan_files_list: list,
+    mapping_df,
+    scenarios: list,
+) -> None:
+    logger.info("=" * 60)
+    logger.info("PHASE I – 3D structure + shift visualisation")
+    logger.info("=" * 60)
+
+    if not ENABLE_3D_PLOTS:
+        logger.info("ENABLE_3D_PLOTS=False – skipping 3D plots.")
+        return
+
+    logger.info("  render_mode = %s", PLOT_3D_RENDER_MODE)
+    paths = generate_3d_plots(
+        plan_files_list=plan_files_list,
+        mapping_df=mapping_df,
+        scenarios=scenarios,
+        output_dir=PLOT_3D_DIR,
+        render_mode=PLOT_3D_RENDER_MODE,
+    )
+    logger.info("  3D plots: %d PNG(s) in %s", len(paths), PLOT_3D_DIR)
+
+
 def phase_g(
     all_results: list,
     mapping_df: pd.DataFrame,
@@ -488,6 +514,9 @@ def main() -> None:
     # H – Shift-scenario impact plots
     phase_h()
 
+    # I – 3D structure + shift visualisation
+    phase_i(plan_files_list, mapping_df, scenarios)
+
     logger.info("Pipeline complete.")
     logger.info("Outputs:")
     logger.info("  Mapping Excel : %s", MAPPING_EXCEL_PATH)
@@ -498,6 +527,8 @@ def main() -> None:
         logger.info("  Compare report: %s", COMPARE_REPORT_PATH)
     if ENABLE_SHIFT_PLOTS:
         logger.info("  Shift plots   : %s", SHIFT_PLOTS_DIR)
+    if ENABLE_3D_PLOTS:
+        logger.info("  3D plots      : %s", PLOT_3D_DIR)
     logger.info("  Log file      : %s", LOG_FILE_PATH)
 
 

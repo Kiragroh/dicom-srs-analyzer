@@ -20,8 +20,12 @@ srs_analysis/
 ├── metrics.py           – SRS metric calculations (Paddick CI, RTOG CI, GI, HI, …)
 ├── shift_scenarios.py   – 6D shift scenario definitions and dose transformation
 ├── html_report.py       – HTML report generation
-├── main.py              – Pipeline orchestrator (Phases A–E)
-└── README.md            – This file
+├── main.py                        – Pipeline orchestrator (Phases A–E)
+├── main_paper-visualize-ci-gi.py  – CI/GI visualization for paper figures
+├── plot_3d.py                     – 3D structure + isodose visualization (PNG)
+├── plot_3d_html.py                – Interactive 3D HTML viewer
+├── plot_3d_from_dicom.py          – Standalone 3D plot from DICOM
+└── README.md                      – This file
 
 output/                  – Created automatically on first run
 ├── ptv_mapping.xlsx     – PTV mapping table (editable)
@@ -29,6 +33,8 @@ output/                  – Created automatically on first run
 ├── shift_scenarios.xlsx – Shift scenario definitions (editable)
 ├── report.html          – HTML report with interactive views
 ├── pipeline.log         – Full log
+├── 3d_plots/            – 3D visualizations (PNG)
+│   └── <patient>_<plan>.png
 ├── views/               – Orthogonal slice views (PNG)
 │   └── <patient>/<plan>/<structure>/
 │       ├── axial_nominal.png
@@ -47,8 +53,12 @@ output/                  – Created automatically on first run
 Install dependencies:
 
 ```bash
-pip install pydicom numpy pandas openpyxl matplotlib
+pip install pydicom numpy pandas openpyxl matplotlib seaborn scipy plotly
 ```
+
+**Note:**
+- `seaborn` + `scipy` – required for `main_paper-visualize-ci-gi.py` statistical plots
+- `plotly` – required for interactive 3D HTML viewer (`plot_3d_html.py`)
 
 ## Quick Start
 
@@ -179,6 +189,93 @@ The pipeline uses a **PIV-stability closure check** to flag uncertain CI/GI valu
 - Filenames: `axial_nominal.png`, `axial_1-0-0--0-0-0.png`, etc. (flattened structure, no nested scenario folders).
 - **Shift scenario views** show nominal 100%/50% isodoses as **gray dashed overlays** for direct comparison.
 - White dashed rectangle indicates the +15mm computation bounding box (configurable via `SHOW_COMPUTATION_BOUNDARY`).
+
+## 3D Visualization
+
+### Screenshot
+
+![3D Structure + Isodose Visualization](docs/screenshot3d.png)
+
+Dual orthographic 3D views showing PTV structure (gray), nominal 100%-Rx isodose (green), and shifted isodose protrusion (magenta) with isocenter marker.
+
+### Static 3D Plots (PNG)
+
+The pipeline generates publication-quality 3D visualizations showing PTV structures and isodose surfaces:
+
+```bash
+# Generated automatically when ENABLE_3D_PLOTS = True in config.py
+python main.py
+```
+
+**Features:**
+- Dual orthographic views (front-left / front-right)
+- Layered rendering: PTV structure (gray) → nominal 100%-Rx isodose (green) → shifted isodose protrusion (magenta)
+- Lambertian shading with configurable light source
+- Isocenter marker (★)
+- Dark theme optimized for publications
+
+**Configuration** (`config.py`):
+| Variable | Default | Description |
+|---|---|---|
+| `ENABLE_3D_PLOTS` | `True` | Enable 3D PNG generation |
+| `PLOT_3D_DIR` | `output/3d_plots` | Output folder |
+| `PLOT_3D_MAX_FACES` | `12000` | Mesh resolution (higher = smoother) |
+| `PLOT_3D_ISO_STRIDE` | `1` | Isodose sampling stride (1=full resolution) |
+
+### Interactive 3D HTML Viewer
+
+Self-contained HTML files with embedded meshes for interactive exploration:
+
+```bash
+# Generated automatically per patient/plan
+# Output: output/3d_html/<patient>_<plan>.html
+```
+
+**Features:**
+- Scenario tabs (nominal + all shifted)
+- Interactive Plotly Mesh3d with per-vertex lighting
+- Camera presets (Front-L, Front-R, Top, Side)
+- Anatomical orientation cube synced to main view
+- Dark theme, fully offline-capable
+
+### Standalone 3D from DICOM
+
+```bash
+python plot_3d_from_dicom.py --patient <folder> --plan <plan_type>
+```
+
+Quick 3D visualization directly from DICOM files without running the full pipeline.
+
+## Paper Visualization (CI/GI Analysis)
+
+Dedicated script for generating publication-ready figures analyzing Conformity Index (CI) and Gradient Index (GI) across setup errors:
+
+```bash
+python main_paper-visualize-ci-gi.py
+```
+
+**Outputs** (in `output/`):
+| File | Description |
+|---|---|
+| `ci_gi_percentage_diff.png` | Boxplots: % difference in CI/GI vs reference (3 rows: all/small/large volumes) |
+| `combined_ci_gi_d98_v100_percentage_diff.png` | Combined metrics (CI, GI, D98%, V100%) |
+| `ci_gi_absolute_values.png` | Absolute CI/GI values across setups |
+| `ci_gi_statistics.xlsx` | Statistics by setup error |
+| `combined_metrics_statistics.xlsx` | Combined metrics statistics |
+| `ci_gi_statistical_tests.xlsx` | Paired t-test results vs HA_1 reference |
+| `ci_gi_summary_by_setup.xlsx` | Summary table: mean/median/std for all setups |
+| `ci_gi_compliance_analysis.xlsx` | ICRU 91 / ISRS compliance rates |
+
+**Requirements:**
+- `output/metrics.csv` (generated by main pipeline)
+- Optional: `DosisStudy.xlsx` for additional dose metrics
+
+**Data Flow:**
+1. Loads metrics from `output/metrics.csv`
+2. Maps scenarios to HA_1–HA_6 labels (nominal, 0.5mm/0.5°, 0.7mm/1°, 1mm/1°, 0mm/1° rot, 1mm/0° trans)
+3. Calculates percentage differences from HA_1 reference
+4. Splits by volume (≤median vs >median)
+5. Generates boxplots with mean markers and statistical summaries
 
 ## Known Limitations / Notes
 
