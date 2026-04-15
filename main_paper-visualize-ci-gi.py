@@ -741,7 +741,7 @@ for idx, (metric_name, color) in enumerate(supp_plot_metrics):
     else:
         ax.set_ylabel('')
 
-fig_supp.suptitle('Supplementary: Percentage Difference in All Metrics vs Reference (1)', fontsize=14, fontweight='bold', y=1.02)
+fig_supp.suptitle('Supplementary: Percentage Difference in All Metrics vs Reference', fontsize=14, fontweight='bold', y=1.02)
 plt.tight_layout()
 
 output_supp_fig = os.path.join(config.OUTPUT_DIR, 'supplementary_all_metrics_subplots.png')
@@ -839,13 +839,13 @@ with PdfPages(output_supp_pdf) as pdf:
         bbox=[0.01, 0.08, 0.98, 0.84]
     )
     table1.auto_set_font_size(False)
-    table1.set_fontsize(6)
-    table1.scale(1, 0.9)  # Lower row height
+    table1.set_fontsize(8)
+    table1.scale(1, 0.9)
 
-    # Style header row - match content font size
+    # Style header row - match content font size (8pt)
     for i in range(len(col_labels)):
         table1[(0, i)].set_facecolor('#4472C4')
-        table1[(0, i)].set_text_props(weight='bold', color='white', size=6)
+        table1[(0, i)].set_text_props(weight='bold', color='white', size=8)
 
     pdf.savefig(fig_table1, dpi=300, bbox_inches='tight', orientation='landscape')
     plt.close(fig_table1)
@@ -881,19 +881,94 @@ with PdfPages(output_supp_pdf) as pdf:
         bbox=[0.01, 0.08, 0.98, 0.84]
     )
     table2.auto_set_font_size(False)
-    table2.set_fontsize(6)
-    table2.scale(1, 0.9)  # Lower row height
+    table2.set_fontsize(8)
+    table2.scale(1, 0.9)
 
-    # Style header row - match content font size
+    # Style header row - match content font size (8pt)
     for i in range(len(stats_col_labels)):
         table2[(0, i)].set_facecolor('#4472C4')
-        table2[(0, i)].set_text_props(weight='bold', color='white', size=6)
+        table2[(0, i)].set_text_props(weight='bold', color='white', size=8)
 
     pdf.savefig(fig_table2, dpi=300, bbox_inches='tight', orientation='landscape')
     plt.close(fig_table2)
     print(f"Supplementary page 3 (statistics table) added to PDF")
 
-print(f"\nComplete supplementary PDF saved to '{output_supp_pdf}' (3 pages)")
+    # Page 4: Legend
+    fig_legend, ax_legend = plt.subplots(figsize=(16, 12))
+    ax_legend.axis('off')
+    ax_legend.set_title('Supplementary: Legend and Abbreviations', fontsize=14, fontweight='bold', pad=20)
+
+    legend_text = """
+METRIC ABBREVIATIONS:
+
+CI          = Conformity Index (Paddick)
+RTOG        = RTOG Conformity Index
+GI          = Gradient Index
+HI          = Homogeneity Index
+V100%       = Coverage (% of target volume receiving Rx dose)
+D50%        = Dose at 50% of target volume (median dose)
+D98%        = Dose at 98% of target volume (near-minimum dose)
+D2%         = Dose at 2% of target volume (near-maximum dose)
+Dmax%       = Maximum dose within target volume
+
+STATISTICAL NOTATION:
+
+Mean        = Arithmetic mean of the metric across all PTVs
+SD          = Standard deviation (measure of dispersion)
+(%)         = Percentage (for V100% and percentage differences)
+(–)         = Dimensionless quantity (indices)
+(Gy)        = Gray (unit of absorbed radiation dose)
+
+SETUP SCENARIOS (Reference = 1):
+
+1           = Nominal (no setup error)
+2           = 0.5 mm translation, 0.5° rotation
+3           = 0.7 mm translation, 1.0° rotation
+4           = 1.0 mm translation, 1.0° rotation
+5           = 0 mm translation, 1.0° rotation (rotation only)
+6           = 1.0 mm translation, 0° rotation (translation only)
+
+PERCENTAGE DIFFERENCE CALCULATION:
+% diff = ((Value_setup_n - Value_setup_1) / Value_setup_1) × 100
+
+Color coding in Table 1 (Comprehensive Metrics):
+• Values shown as Mean ± SD for each metric and setup
+"""
+
+    ax_legend.text(0.05, 0.95, legend_text, transform=ax_legend.transAxes,
+                   fontsize=10, verticalalignment='top', fontfamily='monospace',
+                   bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
+    pdf.savefig(fig_legend, dpi=300, bbox_inches='tight')
+    plt.close(fig_legend)
+    print(f"Supplementary page 4 (legend) added to PDF")
+
+print(f"\nComplete supplementary PDF saved to '{output_supp_pdf}' (4 pages)")
+
+# Append README.pdf to the supplementary PDF
+readme_pdf_path = os.path.join(os.path.dirname(__file__), 'README.pdf')
+if os.path.exists(readme_pdf_path):
+    try:
+        from PyPDF2 import PdfMerger
+
+        # Create merger and append README
+        merger = PdfMerger()
+        merger.append(output_supp_pdf)
+        merger.append(readme_pdf_path)
+
+        # Write combined PDF
+        output_combined = os.path.join(config.OUTPUT_DIR, 'supplementary_with_readme.pdf')
+        merger.write(output_combined)
+        merger.close()
+
+        print(f"\nCombined PDF with README saved to '{output_combined}'")
+        print(f"  - Pages 1-4: Supplementary (Figure + 2 Tables + Legend)")
+        print(f"  - Pages 5+: README documentation")
+    except ImportError:
+        print("\nNote: PyPDF2 not installed. README.pdf not appended.")
+        print("Install with: pip install PyPDF2")
+else:
+    print(f"\nNote: README.pdf not found at '{readme_pdf_path}'")
 
 print("\n" + "="*60)
 print("ANALYSIS COMPLETE - All requested metrics generated")
