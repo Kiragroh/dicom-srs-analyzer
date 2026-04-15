@@ -781,18 +781,18 @@ with PdfPages(output_supp_pdf) as pdf:
     pdf.savefig(fig_supp, dpi=300, bbox_inches='tight')
     print(f"\nSupplementary page 1 (figure) added to PDF")
 
-    # Page 2: Comprehensive metrics table (with shortened column names) - LANDSCAPE
-    fig_table1, ax_table1 = plt.subplots(figsize=(16, 10))  # Wider for landscape
+    # Page 2: Comprehensive metrics table - VERY WIDE, low row height
+    fig_table1, ax_table1 = plt.subplots(figsize=(18, 9))  # Extra wide, same for both tables
     ax_table1.axis('tight')
     ax_table1.axis('off')
-    ax_table1.set_title('Supplementary Table 1: Comprehensive Metrics by Setup', fontsize=14, fontweight='bold', pad=20)
+    ax_table1.set_title('Supplementary Table 1: Comprehensive Metrics by Setup', fontsize=13, fontweight='bold', pad=15)
 
     # Prepare table data with shortened column names
     short_names = {'Setup': 'Setup', 'N': 'N'}
     for metric in ['PaddickCI', 'RTOG_CI', 'GI', 'HI', 'Coverage_pct', 'D50_Gy', 'D98_Gy', 'Dmax_Gy']:
         m_short = metric.replace('_Gy', '').replace('Coverage_pct', 'V100%').replace('PaddickCI', 'CI')
-        short_names[f'{metric}_Mean'] = f'{m_short}_Mean'
-        short_names[f'{metric}_Std'] = f'{m_short}_Std'
+        short_names[f'{metric}_Mean'] = f'{m_short}_M'
+        short_names[f'{metric}_Std'] = f'{m_short}_S'
 
     display_cols = ['Setup', 'N'] + [c for c in short_names.keys() if c not in ['Setup', 'N']]
     display_cols = [c for c in display_cols if c in supp_all_df.columns]
@@ -805,11 +805,11 @@ with PdfPages(output_supp_pdf) as pdf:
         colLabels=col_labels,
         cellLoc='center',
         loc='center',
-        bbox=[0.02, 0.05, 0.96, 0.88]  # Adjusted bbox for better fit
+        bbox=[0.01, 0.08, 0.98, 0.84]  # Very wide bbox
     )
     table1.auto_set_font_size(False)
-    table1.set_fontsize(6)  # Smaller font for more columns
-    table1.scale(1, 1.8)
+    table1.set_fontsize(7)
+    table1.scale(1, 1.1)  # Very low row height
 
     # Style header row
     for i in range(len(col_labels)):
@@ -820,17 +820,16 @@ with PdfPages(output_supp_pdf) as pdf:
     plt.close(fig_table1)
     print(f"Supplementary page 2 (metrics table) added to PDF")
 
-    # Page 3: Statistics table (with shortened column names) - Match plot page width
-    fig_table2, ax_table2 = plt.subplots(figsize=(15, 10))  # Portrait, wide like plot page
+    # Page 3: Statistics table - SAME WIDTH as page 2, low row height
+    fig_table2, ax_table2 = plt.subplots(figsize=(18, 9))  # Same extra wide size
     ax_table2.axis('tight')
     ax_table2.axis('off')
     ax_table2.set_title('Supplementary Table 2: Percentage Difference Statistics\n(Mean / Std / Median per Metric)', fontsize=13, fontweight='bold', pad=15)
 
-    # Shorten column names for display - more aggressive shortening
+    # Shorten column names for display
     stats_short_names = {'Setup': 'Setup'}
     for col in supp_stats_df.columns:
         if col != 'Setup':
-            # Shorten metric names: CI_Mean -> CI_M, etc.
             short = col.replace('_Mean', '_M').replace('_Std', '_S').replace('_Median', '_Md')
             short = short.replace('RTOG_CI', 'RTOG').replace('Dmax%', 'Dmax')
             stats_short_names[col] = short
@@ -842,18 +841,18 @@ with PdfPages(output_supp_pdf) as pdf:
         colLabels=stats_col_labels,
         cellLoc='center',
         loc='center',
-        bbox=[0.03, 0.08, 0.94, 0.82]  # Tight bbox
+        bbox=[0.01, 0.08, 0.98, 0.84]  # Same very wide bbox
     )
     table2.auto_set_font_size(False)
-    table2.set_fontsize(8)
-    table2.scale(1, 1.2)  # Smaller row height (was 2)
+    table2.set_fontsize(7)
+    table2.scale(1, 1.1)  # Same very low row height
 
     # Style header row
     for i in range(len(stats_col_labels)):
         table2[(0, i)].set_facecolor('#4472C4')
-        table2[(0, i)].set_text_props(weight='bold', color='white', size=8)
+        table2[(0, i)].set_text_props(weight='bold', color='white', size=7)
 
-    pdf.savefig(fig_table2, dpi=300, bbox_inches='tight')
+    pdf.savefig(fig_table2, dpi=300, bbox_inches='tight', orientation='landscape')
     plt.close(fig_table2)
     print(f"Supplementary page 3 (statistics table) added to PDF")
 
