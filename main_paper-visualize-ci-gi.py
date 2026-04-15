@@ -32,12 +32,12 @@ print("\nMetrics scenarios:", df_metrics['Scenario'].unique())
 # Filter metrics data for HA plans only and relevant scenarios
 # Map scenarios to Tx labels
 scenario_mapping = {
-    'nominal': 'HA_1',  # Reference (no setup error)
-    '0.29/0.29/0.29//0.29/0.29/0.29': 'HA_2',  # 0.5mm/0.5deg
-    '0.4/0.4/0.4//0.58/0.58/0.58': 'HA_3',      # 0.7mm/1deg
-    '0.58/0.58/0.58//0.58/0.58/0.58': 'HA_4',   # 1mm/1deg
-    '0/0/0//0.58/0.58/0.58': 'HA_5',            # 0mm/1deg (rotation only)
-    '0.58/0.58/0.58//0/0/0': 'HA_6',            # 1mm/0deg (translation only)
+    'nominal': '1',  # Reference (no setup error)
+    '0.29/0.29/0.29//0.29/0.29/0.29': '2',  # 0.5mm/0.5deg
+    '0.4/0.4/0.4//0.58/0.58/0.58': '3',      # 0.7mm/1deg
+    '0.58/0.58/0.58//0.58/0.58/0.58': '4',   # 1mm/1deg
+    '0/0/0//0.58/0.58/0.58': '5',            # 0mm/1deg (rotation only)
+    '0.58/0.58/0.58//0/0/0': '6',            # 1mm/0deg (translation only)
 }
 
 # Filter for HA plans and map scenarios
@@ -110,9 +110,9 @@ df = df_merged.copy()
 df = df.dropna(subset=['PaddickCI', 'GI'])
 print(f"\nData with CI/GI for visualization: {df.shape[0]} rows")
 
-# Create custom x-tick labels
+# Create custom x-tick labels (without HA)
 setup_labels = ['no setup\nerror', '0.5 mm\n0.5°', '0.7 mm\n1°', '1 mm\n1°', '0 mm\n1°', '1 mm\n0°']
-tx_mapping = dict(zip(['HA_1', 'HA_2', 'HA_3', 'HA_4', 'HA_5', 'HA_6'], setup_labels))
+tx_mapping = dict(zip(['1', '2', '3', '4', '5', '6'], setup_labels))
 df['Setup'] = df['Tx'].map(tx_mapping)
 
 # Convert CI and GI to numeric (handle any string markers like *)
@@ -122,10 +122,10 @@ df['GI'] = pd.to_numeric(df['GI'].astype(str).str.replace('*', ''), errors='coer
 # Calculate percentage differences from HA_1 (reference)
 # For CI (higher is better, decrease is negative impact)
 # For GI (lower is better, increase is negative impact)
-ha1_values = df[df['Tx'] == 'HA_1'].set_index(['MRN', 'ptvs'])
+ha1_values = df[df['Tx'] == '1'].set_index(['MRN', 'ptvs'])
 
 diff_data = []
-for tx in ['HA_2', 'HA_3', 'HA_4', 'HA_5', 'HA_6']:
+for tx in ['2', '3', '4', '5', '6']:
     tx_data = df[df['Tx'] == tx].set_index(['MRN', 'ptvs'])
     
     for metric_name, metric_col in [('CI', 'PaddickCI'), ('GI', 'GI')]:
@@ -154,9 +154,9 @@ print(f"CI diff rows: {(diff_df['Metric'] == 'CI').sum()}")
 print(f"GI diff rows: {(diff_df['Metric'] == 'GI').sum()}")
 
 # Calculate median volume from reference setup for volume-based splitting
-median_volume = df[df['Tx'] == 'HA_1']['volume'].median()
-small_vol_mrn_ptvs = df[(df['Tx'] == 'HA_1') & (df['volume'] <= median_volume)][['MRN', 'ptvs']].values.tolist()
-large_vol_mrn_ptvs = df[(df['Tx'] == 'HA_1') & (df['volume'] > median_volume)][['MRN', 'ptvs']].values.tolist()
+median_volume = df[df['Tx'] == '1']['volume'].median()
+small_vol_mrn_ptvs = df[(df['Tx'] == '1') & (df['volume'] <= median_volume)][['MRN', 'ptvs']].values.tolist()
+large_vol_mrn_ptvs = df[(df['Tx'] == '1') & (df['volume'] > median_volume)][['MRN', 'ptvs']].values.tolist()
 
 # Create the plot with 3x1 subplots for CI and GI
 fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(11, 5.7), sharex=True, sharey=True)
@@ -279,10 +279,10 @@ df_combined['D98%[%]'] = pd.to_numeric(df_combined['D98%[%]'], errors='coerce')
 df_combined['Setup'] = df_combined['Tx'].map(tx_mapping)
 
 # Calculate percentage differences from HA_1 reference
-ha1_ref = df_combined[df_combined['Tx'] == 'HA_1'].set_index(['MRN', 'ptvs'])
+ha1_ref = df_combined[df_combined['Tx'] == '1'].set_index(['MRN', 'ptvs'])
 
 combined_diff_data = []
-for tx in ['HA_2', 'HA_3', 'HA_4', 'HA_5', 'HA_6']:
+for tx in ['2', '3', '4', '5', '6']:
     tx_data = df_combined[df_combined['Tx'] == tx].set_index(['MRN', 'ptvs'])
     
     for metric_name, metric_col in [
@@ -315,9 +315,9 @@ for m in ['CI', 'GI', 'D98%']:
     print(f"  {m}: {(combined_diff_df['Metric'] == m).sum()}")
 
 # Create combined plot with 3x1 subplots (all volumes, small, large)
-median_vol_combined = df_combined[df_combined['Tx'] == 'HA_1']['volume'].median()
-small_vol_idx = df_combined[(df_combined['Tx'] == 'HA_1') & (df_combined['volume'] <= median_vol_combined)][['MRN', 'ptvs']].values.tolist()
-large_vol_idx = df_combined[(df_combined['Tx'] == 'HA_1') & (df_combined['volume'] > median_vol_combined)][['MRN', 'ptvs']].values.tolist()
+median_vol_combined = df_combined[df_combined['Tx'] == '1']['volume'].median()
+small_vol_idx = df_combined[(df_combined['Tx'] == '1') & (df_combined['volume'] <= median_vol_combined)][['MRN', 'ptvs']].values.tolist()
+large_vol_idx = df_combined[(df_combined['Tx'] == '1') & (df_combined['volume'] > median_vol_combined)][['MRN', 'ptvs']].values.tolist()
 
 fig_comb, (ax1_comb, ax2_comb, ax3_comb) = plt.subplots(3, 1, figsize=(12, 6.5), sharex=True, sharey=True)
 
@@ -460,12 +460,12 @@ print("\n=== Correlation Analysis: CI and GI vs Setup Error Magnitude ===")
 
 # Define setup error magnitudes (approximate translation magnitude in mm)
 setup_magnitude = {
-    'HA_1': 0,      # no error
-    'HA_2': 0.5,    # 0.5mm
-    'HA_3': 0.7,    # 0.7mm  
-    'HA_4': 1.0,    # 1mm
-    'HA_5': 0,      # rotation only (0mm translation)
-    'HA_6': 1.0     # 1mm translation only
+    '1': 0,      # no error
+    '2': 0.5,    # 0.5mm
+    '3': 0.7,    # 0.7mm  
+    '4': 1.0,    # 1mm
+    '5': 0,      # rotation only (0mm translation)
+    '6': 1.0     # 1mm translation only
 }
 
 df_corr = df.copy()
@@ -480,12 +480,12 @@ print(f"Paddick CI vs Setup Error Magnitude: r = {ci_corr[0]:.4f}, p = {ci_corr[
 print(f"Gradient Index vs Setup Error Magnitude: r = {gi_corr[0]:.4f}, p = {gi_corr[1]:.4e}")
 
 # Statistical Tests: Compare each setup to HA_1 (reference)
-print("\n=== Statistical Tests: Each Setup vs Reference (HA_1) ===")
+print("\n=== Statistical Tests: Each Setup vs Reference (1) ===")
 
-ha1_data = df[df['Tx'] == 'HA_1']
+ha1_data = df[df['Tx'] == '1']
 setup_tests = []
 
-for tx in ['HA_2', 'HA_3', 'HA_4', 'HA_5', 'HA_6']:
+for tx in ['2', '3', '4', '5', '6']:
     tx_data = df[df['Tx'] == tx]
     
     # Match PTVs between setups for paired test
@@ -516,7 +516,7 @@ for tx in ['HA_2', 'HA_3', 'HA_4', 'HA_5', 'HA_6']:
         })
 
 test_df = pd.DataFrame(setup_tests)
-print("\nPaired t-test results (Setup vs HA_1 Reference):")
+print("\nPaired t-test results (Setup vs 1 Reference):")
 print(test_df.to_string(index=False))
 
 # Save test results
@@ -528,7 +528,7 @@ print(f"\nStatistical test results saved to '{output_test}'")
 print("\n=== Comprehensive Summary: All Metrics by Setup ===")
 
 summary_data = []
-for tx in ['HA_1', 'HA_2', 'HA_3', 'HA_4', 'HA_5', 'HA_6']:
+for tx in ['1', '2', '3', '4', '5', '6']:
     tx_data = df[df['Tx'] == tx]
     
     summary_data.append({
@@ -560,7 +560,7 @@ CI_THRESHOLD = 0.6  # ICRU 91 recommendation
 GI_THRESHOLD = 4.0  # ISRS recommendation (lower is better)
 
 compliance_data = []
-for tx in ['HA_1', 'HA_2', 'HA_3', 'HA_4', 'HA_5', 'HA_6']:
+for tx in ['1', '2', '3', '4', '5', '6']:
     tx_data = df[df['Tx'] == tx]
     
     ci_compliant = (tx_data['PaddickCI'] >= CI_THRESHOLD).sum()
@@ -615,7 +615,7 @@ print("\n=== Supplementary Table: All Metrics by Setup ===")
 supp_metrics_all = []
 all_metrics = ['PaddickCI', 'RTOG_CI', 'GI', 'HI', 'Coverage_pct', 'D2_Gy', 'D50_Gy', 'D98_Gy', 'Dmax_Gy', 'V12Gy_cc']
 
-for tx in ['HA_1', 'HA_2', 'HA_3', 'HA_4', 'HA_5', 'HA_6']:
+for tx in ['1', '2', '3', '4', '5', '6']:
     tx_data = df_supp[df_supp['Tx'] == tx]
     if len(tx_data) == 0:
         continue
@@ -658,10 +658,10 @@ supp_diff_metrics = [
     ('RTOG_CI', 'RTOG_CI')
 ]
 
-ha1_supp = df_supp[df_supp['Tx'] == 'HA_1'].set_index(['MRN', 'ptvs'])
+ha1_supp = df_supp[df_supp['Tx'] == '1'].set_index(['MRN', 'ptvs'])
 supp_diff_data = []
 
-for tx in ['HA_2', 'HA_3', 'HA_4', 'HA_5', 'HA_6']:
+for tx in ['2', '3', '4', '5', '6']:
     tx_data = df_supp[df_supp['Tx'] == tx].set_index(['MRN', 'ptvs'])
 
     for metric_name, metric_col in supp_diff_metrics:
@@ -741,14 +741,14 @@ for idx, (metric_name, color) in enumerate(supp_plot_metrics):
     else:
         ax.set_ylabel('')
 
-fig_supp.suptitle('Supplementary: Percentage Difference in All Metrics vs Reference (HA_1)', fontsize=14, fontweight='bold', y=1.02)
+fig_supp.suptitle('Supplementary: Percentage Difference in All Metrics vs Reference (1)', fontsize=14, fontweight='bold', y=1.02)
 plt.tight_layout()
 
 output_supp_fig = os.path.join(config.OUTPUT_DIR, 'supplementary_all_metrics_subplots.png')
 fig_supp.savefig(output_supp_fig, dpi=600, bbox_inches='tight')
 print(f"\nSupplementary figure saved to '{output_supp_fig}'")
 
-# Supplementary statistics table (must be defined before PDF creation)
+# Supplementary statistics table (must be defined before PDF creation) - WITHOUT MEDIAN
 print("\n=== Supplementary Statistics by Metric ===")
 supp_stats = []
 for setup in supp_diff_df['Setup'].unique():
@@ -759,7 +759,7 @@ for setup in supp_diff_df['Setup'].unique():
         if len(metric_data) > 0:
             stats_row[f'{metric}_Mean'] = metric_data.mean()
             stats_row[f'{metric}_Std'] = metric_data.std()
-            stats_row[f'{metric}_Median'] = metric_data.median()
+            # Median removed as requested
     supp_stats.append(stats_row)
 
 supp_stats_df = pd.DataFrame(supp_stats)
@@ -777,7 +777,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 output_supp_pdf = os.path.join(config.OUTPUT_DIR, 'supplementary_all_metrics.pdf')
 with PdfPages(output_supp_pdf) as pdf:
     # Page 1: The figure
-    fig_supp.suptitle('Supplementary Figure: Percentage Difference in All Metrics vs Reference (HA_1)', fontsize=14, fontweight='bold', y=1.02)
+    fig_supp.suptitle('Supplementary Figure: Percentage Difference in All Metrics vs Reference (1)', fontsize=14, fontweight='bold', y=1.02)
     pdf.savefig(fig_supp, dpi=300, bbox_inches='tight')
     print(f"\nSupplementary page 1 (figure) added to PDF")
 
@@ -824,13 +824,13 @@ with PdfPages(output_supp_pdf) as pdf:
     fig_table2, ax_table2 = plt.subplots(figsize=(18, 9))  # Same extra wide size
     ax_table2.axis('tight')
     ax_table2.axis('off')
-    ax_table2.set_title('Supplementary Table 2: Percentage Difference Statistics\n(Mean / Std / Median per Metric)', fontsize=13, fontweight='bold', pad=15)
+    ax_table2.set_title('Supplementary Table 2: Percentage Difference Statistics\n(Mean / Std per Metric)', fontsize=13, fontweight='bold', pad=15)
 
-    # Shorten column names for display
+    # Shorten column names for display (without Median)
     stats_short_names = {'Setup': 'Setup'}
     for col in supp_stats_df.columns:
         if col != 'Setup':
-            short = col.replace('_Mean', '_M').replace('_Std', '_S').replace('_Median', '_Md')
+            short = col.replace('_Mean', '_M').replace('_Std', '_S')
             short = short.replace('RTOG_CI', 'RTOG').replace('Dmax%', 'Dmax')
             stats_short_names[col] = short
 
