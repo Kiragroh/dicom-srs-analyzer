@@ -589,6 +589,188 @@ output_compliance = os.path.join(config.OUTPUT_DIR, 'ci_gi_compliance_analysis.x
 compliance_df.to_excel(output_compliance, index=False)
 print(f"\nCompliance analysis saved to '{output_compliance}'")
 
+# ===== SUPPLEMENTARY: COMPREHENSIVE METRICS ANALYSIS =====
+print("\n" + "="*60)
+print("SUPPLEMENTARY ANALYSIS - All Metrics with V100% and D50")
+print("="*60)
+
+# Create comprehensive supplementary dataset with all available metrics
+df_supp = df_merged.copy()
+
+# Ensure all numeric columns are properly converted
+numeric_cols = ['PaddickCI', 'RTOG_CI', 'GI', 'HI', 'Coverage_pct', 'D2_Gy', 'D50_Gy', 'D98_Gy', 'Dmax_Gy', 'V12Gy_cc']
+for col in numeric_cols:
+    if col in df_supp.columns:
+        df_supp[col] = pd.to_numeric(df_supp[col].astype(str).str.replace('*', ''), errors='coerce')
+
+# Map D98%[%] if exists, otherwise use D98_Gy
+if 'D98%[%]' in df_supp.columns:
+    df_supp['D98_pct'] = pd.to_numeric(df_supp['D98%[%]'], errors='coerce')
+else:
+    df_supp['D98_pct'] = df_supp['D98_Gy']
+
+# Create comprehensive metrics table by setup
+print("\n=== Supplementary Table: All Metrics by Setup ===")
+
+supp_metrics_all = []
+all_metrics = ['PaddickCI', 'RTOG_CI', 'GI', 'HI', 'Coverage_pct', 'D2_Gy', 'D50_Gy', 'D98_Gy', 'Dmax_Gy', 'V12Gy_cc']
+
+for tx in ['HA_1', 'HA_2', 'HA_3', 'HA_4', 'HA_5', 'HA_6']:
+    tx_data = df_supp[df_supp['Tx'] == tx]
+    if len(tx_data) == 0:
+        continue
+
+    row = {'Setup': tx_mapping[tx], 'N': len(tx_data)}
+
+    for metric in all_metrics:
+        if metric in tx_data.columns:
+            vals = tx_data[metric].dropna()
+            if len(vals) > 0:
+                row[f'{metric}_Mean'] = vals.mean()
+                row[f'{metric}_Std'] = vals.std()
+                row[f'{metric}_Median'] = vals.median()
+                row[f'{metric}_Min'] = vals.min()
+                row[f'{metric}_Max'] = vals.max()
+
+    supp_metrics_all.append(row)
+
+supp_all_df = pd.DataFrame(supp_metrics_all)
+supp_all_df = supp_all_df.round(4)
+print("\nComprehensive Metrics Summary (Supplementary):")
+print(supp_all_df.to_string(index=False))
+
+output_supp_all = os.path.join(config.OUTPUT_DIR, 'supplementary_all_metrics.xlsx')
+supp_all_df.to_excel(output_supp_all, index=False)
+print(f"\nSupplementary metrics saved to '{output_supp_all}'")
+
+# Create percentage difference data for supplementary metrics (including V100% and D50)
+print("\n=== Supplementary Percentage Differences (including V100%, D50, D2, Dmax) ===")
+
+supp_diff_metrics = [
+    ('CI', 'PaddickCI'),
+    ('GI', 'GI'),
+    ('D98%', 'D98_Gy'),
+    ('V100%', 'Coverage_pct'),
+    ('D50%', 'D50_Gy'),
+    ('D2%', 'D2_Gy'),
+    ('Dmax%', 'Dmax_Gy'),
+    ('HI', 'HI'),
+    ('RTOG_CI', 'RTOG_CI')
+]
+
+ha1_supp = df_supp[df_supp['Tx'] == 'HA_1'].set_index(['MRN', 'ptvs'])
+supp_diff_data = []
+
+for tx in ['HA_2', 'HA_3', 'HA_4', 'HA_5', 'HA_6']:
+    tx_data = df_supp[df_supp['Tx'] == tx].set_index(['MRN', 'ptvs'])
+
+    for metric_name, metric_col in supp_diff_metrics:
+        if metric_col not in df_supp.columns:
+            continue
+
+        for (mrn, ptv) in tx_data.index:
+            if (mrn, ptv) in ha1_supp.index and (mrn, ptv) in tx_data.index:
+                ref_val = ha1_supp.loc[(mrn, ptv), metric_col]
+                tx_val = tx_data.loc[(mrn, ptv), metric_col]
+
+                if pd.notna(ref_val) and pd.notna(tx_val) and ref_val != 0:
+                    pct_diff = ((tx_val - ref_val) / ref_val) * 100
+
+                    supp_diff_data.append({
+                        'MRN': mrn,
+                        'ptvs': ptv,
+                        'Setup': tx_mapping[tx],
+                        'Metric': metric_name,
+                        'Difference': pct_diff,
+                        'Ref_Value': ref_val,
+                        'Tx_Value': tx_val
+                    })
+
+supp_diff_df = pd.DataFrame(supp_diff_data)
+print(f"\nSupplementary diff data shape: {supp_diff_df.shape}")
+for m in ['CI', 'GI', 'D98%', 'V100%', 'D50%', 'D2%', 'Dmax%', 'HI', 'RTOG_CI']:
+    count = (supp_diff_df['Metric'] == m).sum()
+    if count > 0:
+        print(f"  {m}: {count}")
+
+# Create supplementary figure with multiple subplots (3x3 grid)
+print("\n=== Creating Supplementary Multi-Metric Figure ===")
+
+fig_supp, axes = plt.subplots(3, 3, figsize=(15, 12), sharex=True)
+axes = axes.flatten()
+
+# Define metrics for each subplot with colors
+supp_plot_metrics = [
+    ('CI', '#1f77b4'),
+    ('GI', '#ff7f0e'),
+    ('D98%', '#2ca02c'),
+    ('V100%', '#d62728'),
+    ('D50%', '#9467bd'),
+    ('D2%', '#8c564b'),
+    ('Dmax%', '#e377c2'),
+    ('HI', '#7f7f7f'),
+    ('RTOG_CI', '#bcbd22')
+]
+
+for idx, (metric_name, color) in enumerate(supp_plot_metrics):
+    ax = axes[idx]
+    metric_data = supp_diff_df[supp_diff_df['Metric'] == metric_name]
+
+    if len(metric_data) == 0:
+        ax.set_visible(False)
+        continue
+
+    # Create boxplot for this metric
+    sns.boxplot(data=metric_data, x='Setup', y='Difference', color=color, width=0.6, ax=ax)
+
+    # Add mean markers
+    for i, setup in enumerate(metric_data['Setup'].unique()):
+        setup_data = metric_data[metric_data['Setup'] == setup]
+        mean_val = setup_data['Difference'].mean()
+        ax.plot(i, mean_val, 's', color='white', markeredgecolor='black',
+               markersize=6, markeredgewidth=1.5, zorder=10)
+
+    ax.set_title(f'{metric_name}', fontsize=11, fontweight='bold')
+    ax.set_xlabel('')
+    ax.tick_params(axis='x', rotation=45, labelsize=8)
+    ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
+
+    # Set consistent y-axis label
+    if idx % 3 == 0:
+        ax.set_ylabel('% difference', fontsize=9)
+    else:
+        ax.set_ylabel('')
+
+fig_supp.suptitle('Supplementary: Percentage Difference in All Metrics vs Reference (HA_1)', fontsize=14, fontweight='bold', y=1.02)
+plt.tight_layout()
+
+output_supp_fig = os.path.join(config.OUTPUT_DIR, 'supplementary_all_metrics_subplots.png')
+fig_supp.savefig(output_supp_fig, dpi=600, bbox_inches='tight')
+print(f"\nSupplementary figure saved to '{output_supp_fig}'")
+
+# Supplementary statistics table
+print("\n=== Supplementary Statistics by Metric ===")
+supp_stats = []
+for setup in supp_diff_df['Setup'].unique():
+    setup_data = supp_diff_df[supp_diff_df['Setup'] == setup]
+    stats_row = {'Setup': setup}
+    for metric in ['CI', 'GI', 'D98%', 'V100%', 'D50%', 'D2%', 'Dmax%', 'HI', 'RTOG_CI']:
+        metric_data = setup_data[setup_data['Metric'] == metric]['Difference']
+        if len(metric_data) > 0:
+            stats_row[f'{metric}_Mean'] = metric_data.mean()
+            stats_row[f'{metric}_Std'] = metric_data.std()
+            stats_row[f'{metric}_Median'] = metric_data.median()
+    supp_stats.append(stats_row)
+
+supp_stats_df = pd.DataFrame(supp_stats)
+supp_stats_df = supp_stats_df.round(3)
+print("\nSupplementary statistics:")
+print(supp_stats_df.to_string(index=False))
+
+output_supp_stats = os.path.join(config.OUTPUT_DIR, 'supplementary_statistics.xlsx')
+supp_stats_df.to_excel(output_supp_stats, index=False)
+print(f"\nSupplementary statistics saved to '{output_supp_stats}'")
+
 print("\n" + "="*60)
 print("ANALYSIS COMPLETE - All requested metrics generated")
 print("="*60)
