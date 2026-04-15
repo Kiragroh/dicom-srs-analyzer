@@ -798,15 +798,36 @@ with PdfPages(output_supp_pdf) as pdf:
     display_cols = [c for c in display_cols if c in supp_all_df.columns]
     table_data = supp_all_df[display_cols].round(3)
 
-    # Create two-line headers: Metric name in first line, Statistic in second line
+    # Create three-line headers: Metric name / Statistic / Unit
     col_labels = ['Setup', 'N']
     for col in display_cols[2:]:  # Skip Setup and N
+        # Determine base metric name and unit
+        if 'PaddickCI' in col or 'RTOG_CI' in col or '_CI' in col:
+            metric_name = col.replace('_Mean', '').replace('_Std', '').replace('Paddick', '')
+            unit = '(–)'
+        elif 'GI' in col:
+            metric_name = 'GI'
+            unit = '(–)'
+        elif 'HI' in col:
+            metric_name = 'HI'
+            unit = '(–)'
+        elif 'Coverage_pct' in col or 'V100%' in col:
+            metric_name = 'V100%'
+            unit = '(%)'
+        elif '_Gy' in col:
+            metric_name = col.replace('_Mean', '').replace('_Std', '').replace('_Gy', '')
+            unit = '(Gy)'
+        elif 'V12Gy_cc' in col:
+            metric_name = 'V12Gy'
+            unit = '(cc)'
+        else:
+            metric_name = col.replace('_Mean', '').replace('_Std', '')
+            unit = ''
+
         if '_Mean' in col:
-            metric_name = col.replace('_Mean', '').replace('_Gy', '').replace('Coverage_pct', 'V100%').replace('PaddickCI', 'CI')
-            col_labels.append(f'{metric_name}\nMean')
+            col_labels.append(f'{metric_name}\nMean\n{unit}')
         elif '_Std' in col:
-            metric_name = col.replace('_Std', '').replace('_Gy', '').replace('Coverage_pct', 'V100%').replace('PaddickCI', 'CI')
-            col_labels.append(f'{metric_name}\nSD')
+            col_labels.append(f'{metric_name}\nSD\n{unit}')
         else:
             col_labels.append(col)
 
@@ -821,10 +842,10 @@ with PdfPages(output_supp_pdf) as pdf:
     table1.set_fontsize(7)
     table1.scale(1, 0.9)  # Lower row height
 
-    # Style header row - smaller font for two-line headers
+    # Style header row - smaller font for three-line headers
     for i in range(len(col_labels)):
         table1[(0, i)].set_facecolor('#4472C4')
-        table1[(0, i)].set_text_props(weight='bold', color='white', size=6)
+        table1[(0, i)].set_text_props(weight='bold', color='white', size=5)
 
     pdf.savefig(fig_table1, dpi=300, bbox_inches='tight', orientation='landscape')
     plt.close(fig_table1)
@@ -836,18 +857,19 @@ with PdfPages(output_supp_pdf) as pdf:
     ax_table2.axis('off')
     ax_table2.set_title('Supplementary Table 2: Percentage Difference Statistics', fontsize=13, fontweight='bold', pad=15)
 
-    # Create two-line headers: Metric name in first line, Statistic in second line
+    # Create three-line headers: Metric name / Statistic / Unit
+    # For percentage difference table, unit is always %
     stats_col_labels = ['Setup']
     for col in supp_stats_df.columns:
         if col == 'Setup':
             continue
-        # Parse column name: e.g., "CI_Mean" -> "CI\nMean", "CI_Std" -> "CI\nSD"
+        # Parse column name and add % as unit (all are percentage differences)
         if '_Mean' in col:
             metric_name = col.replace('_Mean', '')
-            stats_col_labels.append(f'{metric_name}\nMean')
+            stats_col_labels.append(f'{metric_name}\nMean\n(%)')
         elif '_Std' in col:
             metric_name = col.replace('_Std', '')
-            stats_col_labels.append(f'{metric_name}\nSD')
+            stats_col_labels.append(f'{metric_name}\nSD\n(%)')
         else:
             stats_col_labels.append(col)
 
@@ -862,10 +884,10 @@ with PdfPages(output_supp_pdf) as pdf:
     table2.set_fontsize(7)
     table2.scale(1, 0.9)  # Lower row height
 
-    # Style header row - smaller font for two-line headers
+    # Style header row - smaller font for three-line headers
     for i in range(len(stats_col_labels)):
         table2[(0, i)].set_facecolor('#4472C4')
-        table2[(0, i)].set_text_props(weight='bold', color='white', size=6)
+        table2[(0, i)].set_text_props(weight='bold', color='white', size=5)
 
     pdf.savefig(fig_table2, dpi=300, bbox_inches='tight', orientation='landscape')
     plt.close(fig_table2)
