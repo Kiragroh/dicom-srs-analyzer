@@ -781,11 +781,11 @@ with PdfPages(output_supp_pdf) as pdf:
     pdf.savefig(fig_supp, dpi=300, bbox_inches='tight')
     print(f"\nSupplementary page 1 (figure) added to PDF")
 
-    # Page 2: Comprehensive metrics table (with shortened column names)
-    fig_table1, ax_table1 = plt.subplots(figsize=(11, 8))
+    # Page 2: Comprehensive metrics table (with shortened column names) - LANDSCAPE
+    fig_table1, ax_table1 = plt.subplots(figsize=(16, 10))  # Wider for landscape
     ax_table1.axis('tight')
     ax_table1.axis('off')
-    ax_table1.set_title('Supplementary Table 1: Comprehensive Metrics by Setup', fontsize=12, fontweight='bold', pad=20)
+    ax_table1.set_title('Supplementary Table 1: Comprehensive Metrics by Setup', fontsize=14, fontweight='bold', pad=20)
 
     # Prepare table data with shortened column names
     short_names = {'Setup': 'Setup', 'N': 'N'}
@@ -805,26 +805,26 @@ with PdfPages(output_supp_pdf) as pdf:
         colLabels=col_labels,
         cellLoc='center',
         loc='center',
-        bbox=[0, 0, 1, 1]
+        bbox=[0.02, 0.05, 0.96, 0.88]  # Adjusted bbox for better fit
     )
     table1.auto_set_font_size(False)
-    table1.set_fontsize(7)
-    table1.scale(1, 1.5)
+    table1.set_fontsize(6)  # Smaller font for more columns
+    table1.scale(1, 1.8)
 
     # Style header row
     for i in range(len(col_labels)):
         table1[(0, i)].set_facecolor('#4472C4')
         table1[(0, i)].set_text_props(weight='bold', color='white')
 
-    pdf.savefig(fig_table1, dpi=300, bbox_inches='tight')
+    pdf.savefig(fig_table1, dpi=300, bbox_inches='tight', orientation='landscape')
     plt.close(fig_table1)
     print(f"Supplementary page 2 (metrics table) added to PDF")
 
-    # Page 3: Statistics table (with shortened column names)
-    fig_table2, ax_table2 = plt.subplots(figsize=(11, 8))
+    # Page 3: Statistics table (with shortened column names) - LANDSCAPE
+    fig_table2, ax_table2 = plt.subplots(figsize=(16, 10))  # Wider for landscape
     ax_table2.axis('tight')
     ax_table2.axis('off')
-    ax_table2.set_title('Supplementary Table 2: Percentage Difference Statistics by Setup', fontsize=12, fontweight='bold', pad=20)
+    ax_table2.set_title('Supplementary Table 2: Percentage Difference Statistics by Setup', fontsize=14, fontweight='bold', pad=20)
 
     # Shorten column names for display
     stats_short_names = {'Setup': 'Setup'}
@@ -839,18 +839,18 @@ with PdfPages(output_supp_pdf) as pdf:
         colLabels=stats_col_labels,
         cellLoc='center',
         loc='center',
-        bbox=[0, 0, 1, 1]
+        bbox=[0.02, 0.05, 0.96, 0.88]  # Adjusted bbox for better fit
     )
     table2.auto_set_font_size(False)
-    table2.set_fontsize(8)
-    table2.scale(1, 1.8)
+    table2.set_fontsize(7)  # Smaller font for more columns
+    table2.scale(1, 2)
 
     # Style header row
     for i in range(len(stats_col_labels)):
         table2[(0, i)].set_facecolor('#4472C4')
         table2[(0, i)].set_text_props(weight='bold', color='white')
 
-    pdf.savefig(fig_table2, dpi=300, bbox_inches='tight')
+    pdf.savefig(fig_table2, dpi=300, bbox_inches='tight', orientation='landscape')
     plt.close(fig_table2)
     print(f"Supplementary page 3 (statistics table) added to PDF")
 
