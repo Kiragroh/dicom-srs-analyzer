@@ -742,6 +742,10 @@ for idx, (metric_name, color) in enumerate(supp_plot_metrics):
         ax.set_ylabel('')
 
 fig_supp.suptitle('Supplementary: Percentage Difference in All Metrics vs Reference', fontsize=14, fontweight='bold', y=1.02)
+
+# Add 'all volumes' label above the first row
+fig_supp.text(0.5, 0.97, 'all volumes', ha='center', va='top', fontsize=10, style='italic', transform=fig_supp.transFigure)
+
 plt.tight_layout()
 
 output_supp_fig = os.path.join(config.OUTPUT_DIR, 'supplementary_all_metrics_subplots.png')
