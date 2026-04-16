@@ -730,7 +730,7 @@ for idx, (metric_name, color) in enumerate(supp_plot_metrics):
         ax.plot(i, mean_val, 's', color='white', markeredgecolor='black',
                markersize=6, markeredgewidth=1.5, zorder=10)
 
-    ax.set_title(f'{metric_name}', fontsize=11, fontweight='bold')
+    ax.set_title(f'{metric_name}', fontsize=11, fontweight='bold', loc='left', pad=10)
     ax.set_xlabel('')
     ax.tick_params(axis='x', rotation=45, labelsize=8)
     ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
@@ -743,8 +743,8 @@ for idx, (metric_name, color) in enumerate(supp_plot_metrics):
 
 fig_supp.suptitle('Supplementary: Percentage Difference in All Metrics vs Reference', fontsize=14, fontweight='bold', y=1.02)
 
-# Add 'all volumes' label above the first row
-fig_supp.text(0.5, 0.97, 'all volumes', ha='center', va='top', fontsize=10, style='italic', transform=fig_supp.transFigure)
+# Add 'all volumes' label above the first row (positioned higher for visibility)
+fig_supp.text(0.5, 0.96, 'all volumes', ha='center', va='top', fontsize=10, style='italic', transform=fig_supp.transFigure)
 
 plt.tight_layout()
 
