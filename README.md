@@ -111,6 +111,28 @@ cd srs_analysis
 python main.py
 ```
 
+### Optional: Brain / Normal-Brain Dose Volumes
+
+To export absolute VxGy values for the selected brain contour and for both
+normal-brain definitions, run:
+
+```bash
+python brain_normal_export.py --data-root ../data --output output/brain_normal_metrics.xlsx
+```
+
+The exporter writes an Excel workbook with:
+
+- `lesion_brain_normal`: local V5/V10/V12-style metrics around each PTV.
+- `plan_brain_normal`: global V5/V8/V10/V12-style metrics for the full brain mask.
+- `metrics_long`: pivot-friendly long format for batch processing.
+- `structure_inventory` and `qa`: structure selection and geometry checks.
+
+For each threshold, the following scopes are exported separately: `Brain`,
+`BrainMinusPTV`, and `BrainMinusGTV`. The tool prefers Whole Brain / Brain /
+Hirn structures. If no brain contour is available, it can use EXTERNAL/BODY as
+a pragmatic fallback for cranial SRS exports. CT images are not required;
+RTSTRUCT contours are voxelized directly on the RTDOSE grid.
+
 ### 4. Review and Refine
 
 Open `output/ptv_mapping.xlsx` and review/edit:
@@ -156,6 +178,10 @@ Standard SRS quality metrics:
 | **PIV** | Prescription Isodose Volume – vol ≥ Rx (cc) |
 | **V12Gy** | Volume receiving ≥ 12 Gy (cc) |
 | **D2 / D50 / D98** | Dose at 2% / 50% / 98% of TV (Gy) |
+
+Additional brain / normal-brain dose-volume metrics are available through
+`brain_normal_export.py`. They are reported at configurable absolute dose
+thresholds for brain, brain minus PTV, and brain minus GTV.
 
 ## PTV Naming Convention
 
@@ -294,6 +320,11 @@ python main_paper-visualize-ci-gi.py
    Adjust `V12GY_THRESHOLD` in `config.py` if needed.
 
 4. **Validation** – Metrics have been validated against reference implementations and clinical data.
+
+5. **Brain / normal-brain export** - `brain_normal_export.py` rasterizes
+   RTSTRUCT contours on the RTDOSE grid and assumes an axial identity-oriented
+   dose grid. It does not need CT images. Brain selection is documented in the
+   workbook QA sheet; EXTERNAL/BODY fallback should be interpreted explicitly.
 
 ## Acknowledgments
 
