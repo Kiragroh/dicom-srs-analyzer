@@ -264,6 +264,23 @@ Self-contained HTML files with embedded meshes for interactive exploration:
 - Anatomical orientation cube synced to main view
 - Dark theme, fully offline-capable
 
+### Rigid Error Case Assets
+
+The versioned example case is stored in `docs/rigid_error_case/`:
+
+- `viewer.html` - self-contained interactive 3D case viewer
+- `videos/individual/*.mp4` - staged rotation for each default scenario
+- `videos/all4/*.mp4` - synchronized four-scenario rotation
+- `gifs/**/*.gif` - lightweight preview animations
+- `midphase/` - high-resolution still frames for each phase
+
+Default rigid-error scenarios:
+
+1. `rot_total_1p0deg_xyz_equal`
+2. `rot_total_2p0deg_xyz_equal`
+3. `measured_translation_only`
+4. `sixd_total_0p5mm_0p5deg_xyz_equal`
+
 ### Standalone 3D from DICOM
 
 ```bash

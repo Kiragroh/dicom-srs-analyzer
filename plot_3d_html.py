@@ -1,5 +1,5 @@
 """
-plot_3d_html.py – Interactive 3-D HTML Viewer per Patient / Plan
+plot_3d_html.py - Interactive 3-D HTML Viewer per Patient / Plan
 =================================================================
 
 Generates one self-contained HTML file per patient/plan.
@@ -34,11 +34,11 @@ def _mesh_trace(verts: Optional[np.ndarray], faces: Optional[np.ndarray],
                 layer: Optional[str] = None) -> Optional[dict]:
     """
     Build a Plotly Mesh3d trace.
-    alpha=1.0 → fully opaque (WebGL depth-buffer works correctly, no artifacts).
-    alpha<1.0 → semi-transparent (painter's algorithm, may have sorting glitches
+    alpha=1.0 -> fully opaque (WebGL depth-buffer works correctly, no artifacts).
+    alpha<1.0 -> semi-transparent (painter's algorithm, may have sorting glitches
                 but acceptable for the "background" layer that peeks out).
-    hovertext → custom tooltip (if None, uses name only).
-    layer → 'struct', 'nominal', or 'shifted' for visibility toggle.
+    hovertext -> custom tooltip (if None, uses name only).
+    layer -> 'struct', 'nominal', or 'shifted' for visibility toggle.
     """
     if verts is None or faces is None or len(faces) == 0:
         return None
@@ -53,13 +53,13 @@ def _mesh_trace(verts: Optional[np.ndarray], faces: Optional[np.ndarray],
         "k": faces[:, 2].tolist(),
         "color": color,
         "opacity": alpha,
-        "flatshading": False,
+        "flatshading": True,
         "lighting": {
-            "ambient":   0.40,
-            "diffuse":   0.70,
-            "roughness": 0.45,
-            "specular":  0.25,
-            "fresnel":   0.10,
+            "ambient":   0.82,
+            "diffuse":   0.38,
+            "roughness": 0.90,
+            "specular":  0.03,
+            "fresnel":   0.00,
         },
         "lightposition": {"x": -300, "y": -200, "z": 500},
         "name": name,
@@ -126,6 +126,17 @@ def _orientation_traces() -> list:
 # ─────────────────────────────────────────────────────────────────────────────
 # HTML template  (uses ###MARKER### placeholders, no Python format() needed)
 # ─────────────────────────────────────────────────────────────────────────────
+
+def _scenario_button_label(name: str) -> str:
+    labels = {
+        "nominal": "Nominal",
+        "rot_total_1p0deg_xyz_equal": "1 deg rot",
+        "rot_total_2p0deg_xyz_equal": "2 deg rot",
+        "measured_translation_only": "0.8 mm shift",
+        "sixd_total_0p5mm_0p5deg_xyz_equal": "0.5 mm + 0.5 deg",
+    }
+    return labels.get(name, name.replace("_", " "))
+
 
 _TEMPLATE = r"""<!DOCTYPE html>
 <html lang="de">
@@ -223,6 +234,19 @@ header h1 { font-size: 13px; font-weight: 600; color: #e6edf3; }
 }
 .vbtn:hover  { background: #30363d; color: #e6edf3; }
 .vbtn.active { background: #1a7f37; border-color: #2ea043; color: #fff; }
+.mode-grid { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.mode-btn {
+  padding: 6px 7px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 5px;
+  color: #ccc;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+}
+.mode-btn:hover  { background: #30363d; color: #e6edf3; }
+.mode-btn.active { background: #8957e5; border-color: #a371f7; color: #fff; }
 #ori-plot { height: 165px; }
 .legend-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #ccc; }
 .swatch { width: 16px; height: 11px; border-radius: 3px; flex-shrink: 0; }
@@ -253,7 +277,7 @@ header h1 { font-size: 13px; font-weight: 600; color: #e6edf3; }
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#388bfd" stroke-width="2">
     <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
   </svg>
-  <h1>SRS 3-D Viewer — ###PLAN_LABEL###</h1>
+  <h1>SRS 3-D Viewer - ###PLAN_LABEL###</h1>
   <span class="badge">###N_SCENARIOS### scenarios</span>
 </header>
 
@@ -267,11 +291,19 @@ header h1 { font-size: 13px; font-weight: 600; color: #e6edf3; }
     </section>
 
     <section>
+      <h3>Darstellung</h3>
+      <div class="mode-grid">
+        <button class="mode-btn active" id="mode-context" onclick="setViewMode('context')">PTV + Isodose surfaces</button>
+        <button class="mode-btn" id="mode-iso" onclick="setViewMode('iso')">Nur Nominal vs Szenario</button>
+      </div>
+    </section>
+
+    <section>
       <h3>&#128247; Kamera</h3>
       <div class="view-grid">
         <button class="vbtn active" id="vbtn-fl"   onclick="setCamera('fl')">Front-L</button>
         <button class="vbtn"        id="vbtn-fr"   onclick="setCamera('fr')">Front-R</button>
-        <button class="vbtn"        id="vbtn-top"  onclick="setCamera('top')">Top (↓)</button>
+        <button class="vbtn"        id="vbtn-top"  onclick="setCamera('top')">Top</button>
         <button class="vbtn"        id="vbtn-side" onclick="setCamera('side')">Side</button>
       </div>
     </section>
@@ -285,7 +317,7 @@ header h1 { font-size: 13px; font-weight: 600; color: #e6edf3; }
         </label>
         <label style="display:flex;align-items:center;gap:7px;cursor:pointer;color:#ccc;">
           <input type="checkbox" id="vis-nominal" checked onchange="toggleLayer('nominal')">
-          <span>Nominale Isodose (grün)</span>
+          <span>Nominal isodose (green)</span>
         </label>
         <label style="display:flex;align-items:center;gap:7px;cursor:pointer;color:#ccc;">
           <input type="checkbox" id="vis-shifted" checked onchange="toggleLayer('shifted')">
@@ -310,11 +342,11 @@ header h1 { font-size: 13px; font-weight: 600; color: #e6edf3; }
     </section>
 
     <section>
-      <h3>&#9881; Auflösung</h3>
+      <h3>&#9881; Resolution</h3>
       <div style="font-size:10px;color:#6e7681;line-height:1.7;">
         ###MESH_INFO###
         <div style="margin-top:5px;color:#484f58;">
-          Höhere Auflösung → <code>--resolution ultra</code>
+          Higher resolution -> <code>--resolution ultra</code>
         </div>
       </div>
     </section>
@@ -391,6 +423,7 @@ const oriLayout = {
 
 // ── State ─────────────────────────────────────────────────────────────────
 let currentScenario = Object.keys(SCENARIOS)[0];
+let viewMode = 'context';
 
 // ── Layer visibility state ────────────────────────────────────────────
 let layerVisibility = {
@@ -405,17 +438,31 @@ function _applyVisibilityDefaults(sc) {
   layerVisibility.struct = structDefault;
   const cb = document.getElementById('vis-struct');
   if (cb) cb.checked = structDefault;
-  // shifted checkbox only relevant in shifted scenarios – reset to true always
+  // shifted checkbox only relevant in shifted scenarios; reset to true always
   layerVisibility.shifted = true;
   const cbsh = document.getElementById('vis-shifted');
   if (cbsh) cbsh.checked = true;
 }
 
-function _filteredTraces(sc) {
-  return sc.traces.filter(t => {
+function _activeTraces(sc) {
+  const source = (viewMode === 'iso' && sc.isoTraces) ? sc.isoTraces : sc.traces;
+  return source.filter(t => {
     if (!t.layer) return true;  // isocenter, always visible
     return layerVisibility[t.layer];
   });
+}
+
+function _redrawCurrent() {
+  const sc = SCENARIOS[currentScenario];
+  const mainEl = document.getElementById('main-plot');
+  let cam = CAMERAS.fl;
+  try { cam = mainEl._fullLayout.scene.camera; } catch(e) {}
+
+  const layout = JSON.parse(JSON.stringify(baseLayout));
+  layout.scene.camera = cam;
+
+  Plotly.react('main-plot', _activeTraces(sc), layout, { responsive:true,
+    displayModeBar:true, modeBarButtonsToRemove:['toImage'], displaylogo:false });
 }
 
 // ── Scenario switching ────────────────────────────────────────────────
@@ -427,16 +474,7 @@ function showScenario(name) {
   // Reset visibility defaults for new scenario
   _applyVisibilityDefaults(sc);
 
-  // Preserve current camera
-  const mainEl = document.getElementById('main-plot');
-  let cam = CAMERAS.fl;
-  try { cam = mainEl._fullLayout.scene.camera; } catch(e) {}
-
-  const layout = JSON.parse(JSON.stringify(baseLayout));
-  layout.scene.camera = cam;
-
-  Plotly.react('main-plot', _filteredTraces(sc), layout, { responsive:true,
-    displayModeBar:true, modeBarButtonsToRemove:['toImage'], displaylogo:false });
+  _redrawCurrent();
   document.getElementById('sc-title').textContent = sc.title;
 
   document.querySelectorAll('.sc-btn').forEach(b => b.classList.remove('active'));
@@ -447,17 +485,15 @@ function showScenario(name) {
 // ── Toggle layer visibility ───────────────────────────────────────────
 function toggleLayer(layer) {
   layerVisibility[layer] = document.getElementById('vis-' + layer).checked;
+  _redrawCurrent();
+}
 
-  const sc = SCENARIOS[currentScenario];
-  const mainEl = document.getElementById('main-plot');
-  let cam = CAMERAS.fl;
-  try { cam = mainEl._fullLayout.scene.camera; } catch(e) {}
-
-  const layout = JSON.parse(JSON.stringify(baseLayout));
-  layout.scene.camera = cam;
-
-  Plotly.react('main-plot', _filteredTraces(sc), layout, { responsive:true,
-    displayModeBar:true, modeBarButtonsToRemove:['toImage'], displaylogo:false });
+function setViewMode(mode) {
+  viewMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('mode-' + mode);
+  if (btn) btn.classList.add('active');
+  _redrawCurrent();
 }
 
 // ── Camera presets ────────────────────────────────────────────────────────
@@ -482,7 +518,7 @@ _applyVisibilityDefaults(SCENARIOS[currentScenario]);
 
 // ── Init main plot ────────────────────────────────────────────────────────
 Plotly.newPlot('main-plot',
-  _filteredTraces(SCENARIOS[currentScenario]),
+  _activeTraces(SCENARIOS[currentScenario]),
   baseLayout,
   { responsive:true, displayModeBar:true,
     modeBarButtonsToRemove:['toImage'], displaylogo:false }
@@ -544,6 +580,7 @@ def generate_3d_html(
         if active_df[mask].empty:
             continue
         active_names = set(active_df[mask]["StructureName_Original"].tolist())
+        active_meta = active_df[mask].set_index("StructureName_Original", drop=False)
 
         try:
             structures, dose, meta = load_plan(pf)
@@ -565,7 +602,7 @@ def generate_3d_html(
                     pf.patient_folder, pf.plan_type)
         iso_verts, iso_faces = _marching_cubes_dose(dose, rx_dose)
         if iso_verts is None:
-            logger.warning("HTML 3D: isodose mesh empty %s/%s – skipped.",
+            logger.warning("HTML 3D: isodose mesh empty %s/%s - skipped.",
                            pf.patient_folder, pf.plan_type)
             continue
         logger.info("HTML 3D:   isodose %d faces", len(iso_faces))
@@ -590,11 +627,23 @@ def generate_3d_html(
 
         # ── Pre-build per-PTV structure traces (reused in all scenarios) ──
         struct_traces = []
+        structure_by_name = {structure.name: structure for structure in structures}
         for ptv_name, sv, sf in per_ptv:
-            centroid = sv.mean(axis=0)
+            source_structure = structure_by_name.get(ptv_name)
+            if source_structure is not None and source_structure.contours:
+                centroid = np.vstack(source_structure.contours).mean(axis=0)
+            else:
+                centroid = sv.mean(axis=0)
             dist     = float(np.linalg.norm(centroid - isocenter))
+            volume_text = "n/a"
+            if ptv_name in active_meta.index:
+                try:
+                    volume_text = f"{float(active_meta.loc[ptv_name, 'Volume_cc']):.3f} cc"
+                except Exception:
+                    volume_text = str(active_meta.loc[ptv_name, 'Volume_cc'])
             hover    = (f"<b>{ptv_name}</b><br>"
-                        f"Abstand zum Isocenter: <b>{dist:.1f} mm</b>")
+                        f"PTV volume: <b>{volume_text}</b><br>"
+                        f"Distance to isocenter: <b>{dist:.1f} mm</b>")
             t = _mesh_trace(sv, sf, _STRUCT_COLOR,
                             ptv_name, alpha=1.0,
                             hovertext=hover, layer="struct")
@@ -611,40 +660,50 @@ def generate_3d_html(
                 )
             )
             traces = []
+            iso_traces = []
 
             if is_nominal:
                 # Isodose opaque (back), structure opaque (front).
                 t = _mesh_trace(iso_verts, iso_faces, _ISO_NOM_COLOR,
                                 f"Nominal {rx_dose:.0f} Gy isodose",
                                 alpha=1.0, layer="nominal")
-                if t: traces.append(t)
+                if t:
+                    traces.append(t)
+                    iso_traces.append(t)
                 traces.extend(struct_traces)
                 title = "Nominal  (Struktur vs. Isodose)"
             else:
                 iso_sh = _transform_verts(iso_verts, isocenter, sc)
                 # Shifted (alpha=0.72) drawn first (behind).
-                # Nominal opaque (alpha=1.0) drawn second → correctly occludes.
+                # Nominal opaque (alpha=1.0) drawn second; correctly occludes.
                 t = _mesh_trace(iso_sh, iso_faces, _ISO_SHIFT_COLOR,
-                                "Shifted isodose protrusion", alpha=0.72,
+                                f"Scenario {rx_dose:.0f} Gy isodose", alpha=1.0,
                                 layer="shifted")
-                if t: traces.append(t)
+                if t:
+                    traces.append(t)
+                    iso_traces.append(t)
                 t = _mesh_trace(iso_verts, iso_faces, _ISO_NOM_COLOR,
                                 f"Nominal {rx_dose:.0f} Gy isodose",
                                 alpha=1.0, layer="nominal")
-                if t: traces.append(t)
+                if t:
+                    traces.append(t)
+                    iso_traces.append(t)
                 # Structure included (hidden by default in shifted)
                 traces.extend(struct_traces)
                 has_rot = bool(sc.rx_deg or sc.ry_deg or sc.rz_deg)
                 title = (f"{sc.name}  "
-                         f"Δ=({sc.dx_mm:+.1f},{sc.dy_mm:+.1f},"
+                         f"d=({sc.dx_mm:+.1f},{sc.dy_mm:+.1f},"
                          f"{sc.dz_mm:+.1f}) mm")
                 if has_rot:
                     title += (f"  rot=({sc.rx_deg:.1f},"
-                              f"{sc.ry_deg:.1f},{sc.rz_deg:.1f})°")
+                              f"{sc.ry_deg:.1f},{sc.rz_deg:.1f}) deg")
 
-            traces.append(_isocenter_trace(isocenter))
+            iso = _isocenter_trace(isocenter)
+            traces.append(iso)
+            iso_traces.append(iso)
             scenarios_data[sc.name] = {
                 "traces": traces,
+                "isoTraces": iso_traces,
                 "title": title,
                 "defaultStructVisible": is_nominal,
             }
@@ -660,7 +719,7 @@ def generate_3d_html(
         scenario_buttons = ""
         for name, data in scenarios_data.items():
             active_cls = " active" if name == first_name else ""
-            label      = name.replace("_", " ")
+            label      = _scenario_button_label(name)
             scenario_buttons += (
                 f'<button class="sc-btn{active_cls}" '
                 f'id="scbtn-{name}" '
@@ -697,7 +756,7 @@ def generate_3d_html(
         )
 
         html = _TEMPLATE
-        html = html.replace("###TITLE###",          f"SRS 3D – {plan_label}")
+        html = html.replace("###TITLE###",          f"SRS 3D - {plan_label}")
         html = html.replace("###PLAN_LABEL###",     plan_label)
         html = html.replace("###N_SCENARIOS###",    str(len(scenarios_data)))
         html = html.replace("###SCENARIO_BUTTONS###", scenario_buttons)

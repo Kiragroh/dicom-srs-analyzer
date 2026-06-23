@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rigid Error 12-Met Case</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070b12;
+      --panel: #101722;
+      --line: #263244;
+      --text: #edf3fb;
+      --muted: #9aa6b8;
+      --accent: #19d3e6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Segoe UI, system-ui, sans-serif;
+      line-height: 1.45;
+    }
+    main { max-width: 1180px; margin: 0 auto; padding: 28px 20px 44px; }
+    h1 { margin: 0 0 6px; font-size: 28px; font-weight: 650; }
+    h2 { margin: 28px 0 10px; font-size: 17px; color: var(--accent); }
+    p { margin: 0 0 18px; color: var(--muted); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: var(--panel);
+    }
+    .card strong { display: block; margin-bottom: 6px; }
+    .card span { display: block; color: var(--muted); font-size: 13px; }
+    .scenario-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 8px;
+      margin: 12px 0 4px;
+      padding: 0;
+      list-style: none;
+    }
+    .scenario-list li {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 10px;
+      background: #0b111b;
+      color: #cbd5e1;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Rigid Error 12-Met Case</h1>
+    <p>Versioned viewer and final rendered media for the 12-target rigid setup-error visualization.</p>
+
+    <h2>Interactive case</h2>
+    <div class="grid">
+      <a class="card" href="viewer.html">
+        <strong>Open interactive 3D viewer</strong>
+        <span>Self-contained Plotly HTML with nominal, two rotation scenarios, measured translation, and 0.5 mm + 0.5 deg 6D.</span>
+      </a>
+      <a class="card" href="midphase/all4/contact.png">
+        <strong>Open all-scenario contact sheet</strong>
+        <span>High-resolution midphase stills for all stages.</span>
+      </a>
+    </div>
+
+    <h2>Default scenarios</h2>
+    <ul class="scenario-list">
+      <li>1 deg rot</li>
+      <li>2 deg rot</li>
+      <li>0.8 mm shift</li>
+      <li>0.5 mm + 0.5 deg</li>
+    </ul>
+
+    <h2>MP4 videos</h2>
+    <div class="grid">
+      <a class="card" href="videos/individual/12met_iso_shift_rot_total_1p0deg_xyz_equal_staged.mp4"><strong>1 deg rot</strong><span>Individual staged rotation, 2560 x 1440.</span></a>
+      <a class="card" href="videos/individual/12met_iso_shift_rot_total_2p0deg_xyz_equal_staged.mp4"><strong>2 deg rot</strong><span>Individual staged rotation, 2560 x 1440.</span></a>
+      <a class="card" href="videos/individual/12met_iso_shift_measured_translation_only_staged.mp4"><strong>0.8 mm shift</strong><span>Individual staged rotation, 2560 x 1440.</span></a>
+      <a class="card" href="videos/individual/12met_iso_shift_sixd_total_0p5mm_0p5deg_xyz_equal_staged.mp4"><strong>0.5 mm + 0.5 deg</strong><span>Individual staged rotation, 2560 x 1440.</span></a>
+      <a class="card" href="videos/all4/12met_iso_shift_all4_staged_grid.mp4"><strong>All 4 scenarios</strong><span>Synchronized four-panel staged rotation.</span></a>
+    </div>
+
+    <h2>GIF previews</h2>
+    <div class="grid">
+      <a class="card" href="gifs/individual/12met_iso_shift_rot_total_1p0deg_xyz_equal_staged.gif"><strong>1 deg rot GIF</strong><span>Compact 720 px preview.</span></a>
+      <a class="card" href="gifs/individual/12met_iso_shift_rot_total_2p0deg_xyz_equal_staged.gif"><strong>2 deg rot GIF</strong><span>Compact 720 px preview.</span></a>
+      <a class="card" href="gifs/individual/12met_iso_shift_measured_translation_only_staged.gif"><strong>0.8 mm shift GIF</strong><span>Compact 720 px preview.</span></a>
+      <a class="card" href="gifs/individual/12met_iso_shift_sixd_total_0p5mm_0p5deg_xyz_equal_staged.gif"><strong>0.5 mm + 0.5 deg GIF</strong><span>Compact 720 px preview.</span></a>
+      <a class="card" href="gifs/all4/12met_iso_shift_all4_staged_grid.gif"><strong>All 4 GIF</strong><span>Compact synchronized preview.</span></a>
+    </div>
+  </main>
+</body>
+</html>
