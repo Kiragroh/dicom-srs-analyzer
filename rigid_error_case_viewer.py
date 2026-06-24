@@ -17,9 +17,8 @@ import numpy as np
 
 
 ANALYZER_DIR = Path(__file__).resolve().parent
-CASE_BUILDER_DIR = ANALYZER_DIR.parent
-if str(CASE_BUILDER_DIR) not in sys.path:
-    sys.path.insert(0, str(CASE_BUILDER_DIR))
+if str(ANALYZER_DIR) not in sys.path:
+    sys.path.insert(0, str(ANALYZER_DIR))
 
 import render_12met_scenario_visuals as scene3d  # noqa: E402
 
