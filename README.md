@@ -270,7 +270,7 @@ The versioned example case is stored in `docs/rigid_error_case/`:
 
 - `viewer.html` - self-contained interactive 3D case viewer
 - `videos/individual/*.mp4` - staged rotation for each default scenario
-- `videos/all4/*.mp4` - synchronized portrait four-scenario rotation
+- `videos/all4/*.mp4` - smoothed PyVista/VTK synchronized portrait four-scenario rotation with zoom insets
 - `gifs/**/*.gif` - lightweight preview animations
 - `midphase/` - high-resolution still frames for each phase
 
