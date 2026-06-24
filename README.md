@@ -268,6 +268,8 @@ Self-contained HTML files with embedded meshes for interactive exploration:
 
 The versioned example case is stored in `docs/rigid_error_case/`:
 
+![Four-scenario rigid error case preview](docs/rigid_error_case/gifs/all4/12met_iso_shift_all4_staged_grid.gif)
+
 - `viewer.html` - self-contained interactive 3D case viewer
 - `videos/individual/*.mp4` - staged rotation for each default scenario
 - `videos/all4/*.mp4` - smoothed PyVista/VTK synchronized portrait four-scenario rotation with zoom insets
