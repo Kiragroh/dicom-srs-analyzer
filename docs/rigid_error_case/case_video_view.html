@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>12-Met 6D-Szenarien</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070b12;
+      --panel: #101722;
+      --line: #263244;
+      --text: #edf3fb;
+      --muted: #9aa6b8;
+      --accent: #19d3e6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Segoe UI, system-ui, sans-serif;
+      line-height: 1.45;
+    }
+    main {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 28px 20px 44px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(24px, 4vw, 34px);
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 30px 0 12px;
+      font-size: 17px;
+      color: var(--accent);
+    }
+    p {
+      margin: 0 0 18px;
+      color: var(--muted);
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .video-wrap {
+      border: 1px solid var(--line);
+      background: #03060b;
+    }
+    video {
+      display: block;
+      width: 100%;
+      max-height: 78vh;
+      object-fit: contain;
+      background: #03060b;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 12px;
+      background: var(--panel);
+    }
+    .item strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+    .item span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .stage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+    }
+    figure {
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #03060b;
+    }
+    figcaption {
+      padding: 10px 12px 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    figcaption strong {
+      display: block;
+      color: var(--text);
+      margin-bottom: 3px;
+      font-size: 14px;
+    }
+    .links {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>12-Met 6D-Szenarien</h1>
+    <p>Vier Szenarien, synchrone Kamera, fuenf Phasen. Die Ansichten enthalten PTVs, 20-Gy-Isodosen und die Orientierung durch Eyes, Optic Nerves, Chiasma und Brainstem.</p>
+
+    <div class="video-wrap">
+      <video controls preload="metadata" poster="midphase/all4/03_shifted.png">
+        <source src="videos/all4/12met_iso_shift_all4_staged_grid.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="links">
+      <a href="videos/all4/12met_iso_shift_all4_staged_grid.mp4">MP4 oeffnen</a>
+      <a href="gifs/all4/12met_iso_shift_all4_staged_grid.gif">GIF oeffnen</a>
+      <a href="midphase/all4/contact.png">Kontaktbogen oeffnen</a>
+    </div>
+
+    <h2>Szenarien</h2>
+    <div class="grid">
+      <div class="item"><strong>1 deg rot</strong><span>rx/ry/rz = 0.33/0.33/0.33 deg</span></div>
+      <div class="item"><strong>2 deg rot</strong><span>rx/ry/rz = 0.67/0.67/0.67 deg</span></div>
+      <div class="item"><strong>0.8 mm shift</strong><span>dx/dy/dz = 0.2/0.8/0.2 mm</span></div>
+      <div class="item"><strong>0.5 mm + 0.5 deg</strong><span>dxyz = 0.17 mm, rxyz = 0.17 deg</span></div>
+    </div>
+
+    <h2>Fuenf Ansichten</h2>
+    <div class="stage-grid">
+      <figure>
+        <a href="midphase/all4/01_ptv.png"><img src="midphase/all4/01_ptv.png" alt="PTV und Organe"></a>
+        <figcaption><strong>1. PTV + OAR</strong>PTVs mit Eyes, Optic Nerves, Chiasma und Brainstem.</figcaption>
+      </figure>
+      <figure>
+        <a href="midphase/all4/02_nominal.png"><img src="midphase/all4/02_nominal.png" alt="Nominale 20 Gy Isodose"></a>
+        <figcaption><strong>2. Nominale 20 Gy</strong>Nominale Isodose mit PTVs und Organorientierung.</figcaption>
+      </figure>
+      <figure>
+        <a href="midphase/all4/03_shifted.png"><img src="midphase/all4/03_shifted.png" alt="Iso-Interaktion"></a>
+        <figcaption><strong>3. Iso-Interaktion</strong>Nominale und Szenario-Isodose ohne PTV-Overlay.</figcaption>
+      </figure>
+      <figure>
+        <a href="midphase/all4/04_diff.png"><img src="midphase/all4/04_diff.png" alt="Rest ausserhalb nominal"></a>
+        <figcaption><strong>4. Rest ausserhalb nominal</strong>Szenario-Isodose ausserhalb der nominalen 20-Gy-Isodose.</figcaption>
+      </figure>
+      <figure>
+        <a href="midphase/all4/05_miss.png"><img src="midphase/all4/05_miss.png" alt="PTV ohne 20 Gy nach Shift"></a>
+        <figcaption><strong>5. PTV ohne 20 Gy nach Shift</strong>Cyan markiert PTV-Anteile ohne 20 Gy nach dem Szenario-Shift.</figcaption>
+      </figure>
+    </div>
+  </main>
+</body>
+</html>
