@@ -46,9 +46,11 @@ METRIC_COLS = [
     ("Dmax_Gy",         "Dmax (Gy)"),
     ("PIV_cc",          "PIV (cc)"),
     ("V12Gy_cc",        "V12Gy (cc)"),
+    ("Dmean_Gy",        "Dmean (Gy)"),
     ("D98_Gy",          "D98 (Gy)"),
     ("D2_Gy",           "D2 (Gy)"),
     ("D50_Gy",          "D50 (Gy)"),
+    ("IDLApprox_pct",   "IDL approx. (%)"),
     ("DistToIso_mm",    "Dist Iso (mm)"),
 ]
 
@@ -387,7 +389,7 @@ function deltaClass(col, delta) {
 }
 function metricDec(col) {
   var d3 = ["PaddickCI","RTOG_CI","HI","GI"];
-  var d1 = ["Coverage_pct","DistToIso_mm","Dmax_Gy","D98_Gy","D2_Gy","Rx_dose"];
+  var d1 = ["Coverage_pct","DistToIso_mm","Dmax_Gy","Dmean_Gy","D98_Gy","D2_Gy","IDLApprox_pct","Rx_dose"];
   if (d3.indexOf(col) >= 0) return 3;
   if (d1.indexOf(col) >= 0) return 1;
   return 3;
@@ -499,7 +501,7 @@ function switchTab(el, targetId) {
 // ============================================================
 var METRIC_COLS = PLACEHOLDER_METRIC_COLS;
 var METRIC_DEC = {Coverage_pct:1,PaddickCI:3,RTOG_CI:3,HI:3,GI:3,Dmax_Gy:2,
-                  PIV_cc:3,V12Gy_cc:3,D98_Gy:2,D2_Gy:2,TV_cc:3,DistToIso_mm:1};
+                  PIV_cc:3,V12Gy_cc:3,Dmean_Gy:2,D98_Gy:2,D2_Gy:2,IDLApprox_pct:1,TV_cc:3,DistToIso_mm:1};
 
 function buildMetricsTab(p) {
   var html = '<div style="overflow-x:auto"><table>';

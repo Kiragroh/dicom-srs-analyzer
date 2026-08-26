@@ -324,6 +324,8 @@ def _plan_means_row(sub_df: pd.DataFrame, label: str) -> str:
         f"<td>{_fmt(smean(nom['RTOG_CI'],ci_ok),2)}{cn}</td>"
         f"<td>{_fmt(smean(nom['HI']),3)}</td>"
         f"<td>{_fmt(smean(nom['GI'],gi_ok),2)}{gn}</td>"
+        f"<td>{_fmt(smean(nom['Dmean_Gy']),2)}</td>"
+        f"<td>{_fmt(smean(nom['IDLApprox_pct']),1)}</td>"
         f"<td>{_fmt(smean(nom['Dmax_Gy']),2)}</td>"
         f"<td>{_fmt(smean(nom['PIV_cc']),3)}</td>"
         f"<td>{_fmt(smean(nom['V12Gy_cc']),3)}</td>"
@@ -355,7 +357,7 @@ def _section_plan_summary(df: pd.DataFrame) -> str:
 <thead><tr>
   <th colspan="3">Patient / Plan</th>
   <th>TV (cc)</th><th>Dist</th><th>Coverage (%)</th><th>Paddick CI</th><th>RTOG CI</th>
-  <th>HI</th><th>GI</th><th>Dmax (Gy)</th><th>PIV (cc)</th><th>V12Gy (cc)</th><th></th>
+  <th>HI</th><th>GI</th><th>Dmean (Gy)</th><th>IDL approx. (%)</th><th>Dmax (Gy)</th><th>PIV (cc)</th><th>V12Gy (cc)</th><th></th>
 </tr></thead>
 <tbody>{chr(10).join(r for r in rows_html if r)}</tbody>
 </table>
@@ -399,6 +401,8 @@ def _section_overview(df: pd.DataFrame) -> str:
             f"<td style='{_cell_colour('RTOG_CI', _safe_float(r.get('RTOG_CI')))}'>{_fmu(r.get('RTOG_CI'),3,ci_u)}{ci_span}</td>"
             f"<td style='{_cell_colour('HI', _safe_float(r.get('HI')))}'>{_fmt(r.get('HI'),3)}</td>"
             f"<td style='{_cell_colour('GI', _safe_float(r.get('GI')))}'>{_fmu(r.get('GI'),2,gi_u)}{gi_span}</td>"
+            f"<td>{_fmt(r.get('Dmean_Gy'),2)}</td>"
+            f"<td>{_fmt(r.get('IDLApprox_pct'),1)}</td>"
             f"<td>{_fmt(r.get('Dmax_Gy'),2)}</td>"
             f"<td>{_fmt(r.get('PIV_cc'),3)}</td>"
             f"<td>{_fmt(r.get('V12Gy_cc'),3)}</td>"
@@ -417,7 +421,7 @@ def _section_overview(df: pd.DataFrame) -> str:
 <thead><tr>
   <th>Patient</th><th>Plan</th><th>Structure</th>
   <th>TV (cc)</th><th>Dist Iso (mm)</th><th>Coverage (%)</th><th>Paddick CI</th><th>RTOG CI</th>
-  <th>HI</th><th>GI</th><th>Dmax (Gy)</th><th>PIV (cc)</th><th>V12Gy (cc)</th>
+  <th>HI</th><th>GI</th><th>Dmean (Gy)</th><th>IDL approx. (%)</th><th>Dmax (Gy)</th><th>PIV (cc)</th><th>V12Gy (cc)</th>
   <th>Note</th>
 </tr></thead>
 <tbody>{chr(10).join(rows_html)}{chr(10).join(mean_rows)}</tbody>
@@ -473,11 +477,13 @@ def _subsection_plan(plan_type: str, plan_df: pd.DataFrame, patient: str) -> str
                 f"<td style='{_cell_colour('RTOG_CI', _safe_float(r.get('RTOG_CI')))}'>{_fmu(r.get('RTOG_CI'),3,ci_u)}{ci_span2}</td>"
                 f"<td style='{_cell_colour('HI', _safe_float(r.get('HI')))}'>{_fmt(r.get('HI'),3)}</td>"
                 f"<td style='{_cell_colour('GI', _safe_float(r.get('GI')))}'>{_fmu(r.get('GI'),2,gi_u)}{gi_span2}</td>"
+                f"<td>{_fmt(r.get('Dmean_Gy'),2)}</td>"
                 f"<td>{_fmt(r.get('Dmax_Gy'),2)}</td>"
                 f"<td>{_fmt(r.get('PIV_cc'),3)}</td>"
                 f"<td>{_fmt(r.get('V12Gy_cc'),3)}</td>"
                 f"<td>{_fmt(r.get('D98_Gy'),2)}</td>"
                 f"<td>{_fmt(r.get('D2_Gy'),2)}</td>"
+                f"<td>{_fmt(r.get('IDLApprox_pct'),1)}</td>"
                 f"<td>{r.get('Error','')}</td>"
                 f"</tr>"
             )
@@ -500,8 +506,8 @@ def _subsection_plan(plan_type: str, plan_df: pd.DataFrame, patient: str) -> str
 <thead><tr>
   <th>Scenario</th><th>TV (cc)</th><th>Dist Iso (mm)</th><th>Coverage (%)</th>
   <th>Paddick CI</th><th>RTOG CI</th><th>HI</th><th>GI</th>
-  <th>Dmax (Gy)</th><th>PIV (cc)</th><th>V12Gy (cc)</th>
-  <th>D98 (Gy)</th><th>D2 (Gy)</th><th>Note</th>
+  <th>Dmean (Gy)</th><th>Dmax (Gy)</th><th>PIV (cc)</th><th>V12Gy (cc)</th>
+  <th>D98 (Gy)</th><th>D2 (Gy)</th><th>IDL approx. (%)</th><th>Note</th>
 </tr></thead>
 <tbody>{"".join(rows_html)}</tbody>
 </table>
@@ -515,7 +521,7 @@ def _subsection_plan(plan_type: str, plan_df: pd.DataFrame, patient: str) -> str
             '<thead><tr><th colspan="3">Mean (nominal, excl. uncertain)</th>'
             '<th>TV (cc)</th><th>Dist</th>'
             '<th>Cov (%)</th><th>Paddick CI</th><th>RTOG CI</th><th>HI</th><th>GI</th>'
-            '<th>Dmax</th><th>PIV</th><th>V12Gy</th><th></th></tr></thead>'
+            '<th>Dmean</th><th>IDL approx.</th><th>Dmax</th><th>PIV</th><th>V12Gy</th><th></th></tr></thead>'
             f'<tbody>{mean_html}</tbody></table>'
         )
     else:

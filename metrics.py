@@ -14,7 +14,9 @@ Metrics returned per structure / plan combination:
     Dmax        – Maximum dose in structure (Gy)
     PIV         – Prescription Isodose Volume (cc), volume ≥ Rx dose
     V12Gy       – Volume ≥ 12 Gy (cc)
+    Dmean       – Mean dose in the target volume (Gy)
     D2, D98, D50– Dose at 2 %, 98 %, 50 % of TV (Gy)
+    IDLApprox   – Approximate prescription isodose level = D98 / D2 × 100 (%)
     effectiveDiameter – effective diameter from TV (mm)
     finalGrid   – sampling grid step used (mm)
 
@@ -73,9 +75,11 @@ class MetricResult:
     Dmax:             float = float("nan")
     PIV:              float = float("nan")
     V12Gy:            float = float("nan")
+    Dmean:            float = float("nan")
     D2:               float = float("nan")
     D98:              float = float("nan")
     D50:              float = float("nan")
+    IDLApprox:        float = float("nan")
     effectiveDiameter: float = float("nan")
     finalGrid:        float = float("nan")
     rx_dose:          float = float("nan")
@@ -107,7 +111,7 @@ def _calculate_metrics_for_step(
 
     Points are on a regular grid with spacing *step* (mm).
     PIV and V12Gy use ALL grid points (regardless of structure membership).
-    TV, Dmax, D2/D50/D98 use only points INSIDE the structure.
+    TV, Dmax, Dmean and D2/D50/D98 use only points INSIDE the structure.
 
     *extra_margin* expands the bounding box on all sides (mm). Extra z-planes
     are added above and below the contour stack with *step* spacing so that
@@ -232,9 +236,11 @@ def _calculate_metrics_for_step(
         return acc
 
     TV_at_Rx = vol_at_dose(rx_dose)
+    Dmean = dose_mean_from_histogram(histogram)
     D2  = dose_at_vol_pct(2.0)
     D98 = dose_at_vol_pct(98.0)
     D50 = dose_at_vol_pct(50.0)
+    IDLApprox = idl_approx_percent(D98, D2)
 
     eff_diam = 2.0 * ((3.0 * TV * 1000.0) / (4.0 * np.pi)) ** (1.0 / 3.0) if TV > 0 else 0.0
     coverage  = TV_at_Rx / TV if TV > 0 else 0.0
@@ -256,7 +262,8 @@ def _calculate_metrics_for_step(
         "GI": GI,
         "PIV": PIV,
         "V12Gy": V12,
-        "D2": D2, "D98": D98, "D50": D50,
+        "Dmean": Dmean, "D2": D2, "D98": D98, "D50": D50,
+        "IDLApprox": IDLApprox,
         "effectiveDiameter": eff_diam,
         "finalGrid": step,
         "ci_uncertain": ci_uncertain,
@@ -266,9 +273,23 @@ def _calculate_metrics_for_step(
     }
 
 
+def dose_mean_from_histogram(histogram: dict[float, float]) -> float:
+    """Return the volume-weighted mean dose from a dose-volume histogram."""
+    total_volume = sum(histogram.values())
+    if total_volume <= 0:
+        return 0.0
+    return sum(dose * volume for dose, volume in histogram.items()) / total_volume
+
+
+def idl_approx_percent(d98: float, d2: float) -> float:
+    """Estimate the prescription isodose level as D98 / D2 × 100."""
+    return 100.0 * d98 / d2 if d2 > 0 else float("nan")
+
+
 def _empty_metrics(step: float) -> dict:
     keys = ["TV", "Dmax", "coverage", "paddickCI", "rtogCI", "HI", "GI",
-            "PIV", "V12Gy", "D2", "D98", "D50", "effectiveDiameter", "finalGrid"]
+            "PIV", "V12Gy", "Dmean", "D2", "D98", "D50", "IDLApprox",
+            "effectiveDiameter", "finalGrid"]
     d = {k: float("nan") for k in keys}
     d["finalGrid"] = step
     d["ci_uncertain"] = False
@@ -284,7 +305,7 @@ def _merge_metrics(fine: dict, expanded: dict) -> dict:
     """
     Merge fine-grid structural metrics with expanded-grid volume metrics.
 
-    Structure-based metrics (TV, Dmax, D2/D50/D98, coverage, HI,
+    Structure-based metrics (TV, Dmax, Dmean, D2/D50/D98, coverage, HI,
     effectiveDiameter, finalGrid) come from the fine-grid run.
     Global volume metrics (PIV, V_half_Rx, V12Gy) come from the
     expanded coarse-grid run so that isodoses outside the structure
@@ -332,7 +353,7 @@ def calculate_all_metrics(
     Compute metrics with adaptive grid refinement + fixed-margin boundary scan.
 
     Strategy:
-    1. Fine adaptive grid at 0 mm margin → TV, Dmax, D2/D50/D98, coverage.
+    1. Fine adaptive grid at 0 mm margin → TV, Dmax, Dmean, D2/D50/D98, coverage.
     2. Coarse 1 mm grid at +BOUNDARY_FIXED_MARGIN_MM → PIV, V_half_Rx, V12Gy.
        ci_uncertain / gi_uncertain reflect whether the relevant isodose touches
        the boundary of the 15 mm-expanded box (not the structure edge).
@@ -587,7 +608,7 @@ def compute_metrics_for_plan(
                 gi_high=bool(m.get("gi_high", False)),
                 **{k: m[k] for k in [
                     "TV", "coverage", "paddickCI", "rtogCI", "HI", "GI",
-                    "Dmax", "PIV", "V12Gy", "D2", "D98", "D50",
+                    "Dmax", "PIV", "V12Gy", "Dmean", "D2", "D98", "D50", "IDLApprox",
                     "effectiveDiameter", "finalGrid",
                 ]},
             )
@@ -663,9 +684,11 @@ def results_to_dataframe(results: List[MetricResult]):
             "Dmax_Gy":             r.Dmax,
             "PIV_cc":              r.PIV,
             "V12Gy_cc":            r.V12Gy,
+            "Dmean_Gy":            r.Dmean,
             "D2_Gy":               r.D2,
             "D98_Gy":              r.D98,
             "D50_Gy":              r.D50,
+            "IDLApprox_pct":       r.IDLApprox,
             "EffDiameter_mm":      r.effectiveDiameter,
             "FinalGrid_mm":        r.finalGrid,
             "DistToIso_mm":        r.DistToIso_mm,

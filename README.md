@@ -178,6 +178,8 @@ Standard SRS quality metrics:
 | **PIV** | Prescription Isodose Volume – vol ≥ Rx (cc) |
 | **V12Gy** | Volume receiving ≥ 12 Gy (cc) |
 | **D2 / D50 / D98** | Dose at 2% / 50% / 98% of TV (Gy) |
+| **Dmean** | Volume-weighted mean target dose (Gy) |
+| **IDL approximation** | D98 / D2 × 100 (%) for a dose-normalized prescription-isodose estimate |
 
 Additional brain / normal-brain dose-volume metrics are available through
 `brain_normal_export.py`. They are reported at configurable absolute dose
